@@ -166,14 +166,13 @@ botao.addEventListener("click", async () => {
       window.location.href = "index.html";
     }, 2000);
 
-  } catch (error) {
+  catch (error) {
+  console.error("ERRO FIREBASE:", error);
+  alert(error.message);
+}
 
-    console.error("Erro:", error);
-    alert("Erro ao enviar solicitação. Tente novamente.");
+}
 
-    botao.disabled = false;
-    botao.innerText = "Enviar solicitação";
-  }
 
 });
 

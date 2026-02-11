@@ -163,16 +163,31 @@ async function carregarTestadores(){
         const div = document.createElement("div");
         div.className="card";
 
-        div.innerHTML=`
-        <div class="nome">${t.nome || "Sem nome"}</div>
-        <div class="info">Email: ${t.email || "-"}</div>
-        <div class="info">Telefone: ${t.telefone || "-"}</div>
-        <div class="info">Aparelho: ${t.aparelho || "-"}</div>
-        <div class="info">Modelo: ${t.modelo || "-"}</div>
-        <div class="info">Versão: ${t.versao || "-"}</div>
-        `;
+       div.innerHTML=`
+<div class="nome">${s.nomeApp || "App sem nome"}</div>
+<div class="info">Email: ${s.email || "-"}</div>
+<div class="info">Quantidade: ${s.quantidade || "-"}</div>
+<div class="info">Prazo: ${s.prazo || "-"}</div>
+<div class="info">Status: ${s.status || "-"}</div>
+<div class="info"><a href="${s.linkTeste}" target="_blank">Abrir teste</a></div>
 
-        lista.appendChild(div);
+<div class="info" style="margin-top:10px;">
+<strong>Instruções para os testadores:</strong>
+</div>
+
+<pre style="
+white-space: pre-wrap;
+background:#0f172a;
+padding:10px;
+border-radius:6px;
+color:#38bdf8;
+margin-top:5px;
+font-size:13px;
+">
+${s.instrucoes || "Nenhuma instrução informada"}
+</pre>
+`;
+
     });
 }
 
