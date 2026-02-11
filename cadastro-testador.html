@@ -92,7 +92,14 @@ small{
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { 
+  getFirestore, 
+  collection, 
+  addDoc, 
+  query, 
+  where, 
+  getDocs 
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBp43RboeJ5eQildnFcTc7JtkHa0xvQdnM",
@@ -108,22 +115,42 @@ const db = getFirestore(app);
 
 window.cadastrar = async function() {
 
-  const nome = document.getElementById("nome").value;
-  const email = document.getElementById("email").value;
-  const whatsapp = document.getElementById("whatsapp").value;
-  const modelo = document.getElementById("modelo").value;
-  const versao = document.getElementById("versao").value;
+  const botao = document.querySelector("button");
+  botao.disabled = true;
+  botao.innerText = "Enviando...";
+
+  const nome = document.getElementById("nome").value.trim();
+  const email = document.getElementById("email").value.trim();
+  const whatsapp = document.getElementById("whatsapp").value.trim();
+  const modelo = document.getElementById("modelo").value.trim();
+  const versao = document.getElementById("versao").value.trim();
   const tipoCelular = document.getElementById("tipoCelular").value;
 
   if(!nome || !email){
     alert("Preencha nome e email");
+    botao.disabled = false;
+    botao.innerText = "Cadastrar";
     return;
   }
 
   try {
 
-    await addDoc(collection(db, "testadores"), {
+    // 🔎 Verificar se já existe email cadastrado
+    const q = query(
+      collection(db, "testadores"),
+      where("email", "==", email)
+    );
 
+    const snapshot = await getDocs(q);
+
+    if (!snapshot.empty) {
+      alert("Este email já está cadastrado.");
+      botao.disabled = false;
+      botao.innerText = "Cadastrar";
+      return;
+    }
+
+    await addDoc(collection(db, "testadores"), {
       nome,
       email,
       whatsapp,
@@ -131,12 +158,13 @@ window.cadastrar = async function() {
       versao,
       tipoCelular,
       tipo: "testador",
+      status: "ativo",
       criadoEm: new Date()
     });
 
-    // 🔵 Criar mensagem visual na tela
+    // 🔵 Mensagem visual fixa
     const msg = document.createElement("div");
-    msg.innerHTML = "✅ Cadastro realizado com sucesso! Entraremos em contato em breve.";
+    msg.innerHTML = "✅ Cadastro realizado com sucesso! Redirecionando...";
     msg.style.marginTop = "20px";
     msg.style.padding = "15px";
     msg.style.background = "#16a34a";
@@ -146,11 +174,8 @@ window.cadastrar = async function() {
 
     document.querySelector(".container").appendChild(msg);
 
-    // 🔒 Desabilitar botão
-    document.querySelector("button").disabled = true;
-    document.querySelector("button").innerText = "Enviado";
+    botao.innerText = "Enviado";
 
-    // ⏳ Redirecionar após 2 segundos
     setTimeout(() => {
       window.location.href = "index.html";
     }, 2000);
@@ -158,5 +183,8 @@ window.cadastrar = async function() {
   } catch (error) {
     alert("Erro ao enviar cadastro. Tente novamente.");
     console.error(error);
+    botao.disabled = false;
+    botao.innerText = "Cadastrar";
   }
 }
+</script>
