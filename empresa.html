@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Enviar Aplicativo para Teste - ValidaPlay</title>
+
+<style>
+body{
+    margin:0;
+    font-family:Arial;
+    background:#0f172a;
+    color:white;
+}
+
+.container{
+    max-width:600px;
+    margin:60px auto;
+    background:#020617;
+    padding:30px;
+    border-radius:12px;
+    border:1px solid #1e293b;
+}
+
+h1{
+    text-align:center;
+    color:#38bdf8;
+}
+
+label{
+    display:block;
+    margin-top:15px;
+    margin-bottom:5px;
+}
+
+input, textarea, select{
+    width:100%;
+    padding:12px;
+    border-radius:6px;
+    border:none;
+    background:#020617;
+    border:1px solid #334155;
+    color:white;
+}
+
+textarea{
+    height:120px;
+}
+
+button{
+    margin-top:25px;
+    width:100%;
+    padding:14px;
+    background:#38bdf8;
+    border:none;
+    border-radius:8px;
+    font-size:16px;
+    font-weight:bold;
+    cursor:pointer;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>Enviar aplicativo para teste</h1>
+
+<label>Nome do aplicativo</label> <input type="text" id="app">
+
+<label>Seu email</label> <input type="email" id="email">
+
+<label>Link do teste fechado (Google Play)</label> <input type="text" id="link">
+
+<label>Quantidade de testadores desejada</label> <select id="quantidade">
+
+<option>12</option>
+<option>15</option>
+<option>20</option>
+<option>30</option>
+<option>50</option>
+</select>
+
+<label>Prazo do teste</label> <select id="prazo">
+
+<option>14 dias</option>
+<option>7 dias</option>
+<option>3 dias</option>
+</select>
+
+<label>Instruções para os testadores (login, senha, como usar)</label>
+
+<textarea id="instrucoes"></textarea>
+
+<button id="enviar">Enviar solicitação</button>
+
+</div>
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBp43RboeJ5eQildnFcTc7JtkHa0xvQdnM",
+  authDomain: "validaplay.firebaseapp.com",
+  projectId: "validaplay",
+  storageBucket: "validaplay.firebasestorage.app",
+  messagingSenderId: "731420070879",
+  appId: "1:731420070879:web:2b7a466b362211d8256a6a"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+document.getElementById("enviar").addEventListener("click", async () => {
+
+  const nomeApp = document.getElementById("app").value;
+  const email = document.getElementById("email").value;
+  const linkTeste = document.getElementById("link").value;
+  const quantidade = document.getElementById("quantidade").value;
+  const prazo = document.getElementById("prazo").value;
+  const instrucoes = document.getElementById("instrucoes").value;
+
+  if(!nomeApp || !email || !linkTeste){
+    alert("Preencha nome do app, email e link do teste.");
+    return;
+  }
+
+  await addDoc(collection(db, "solicitacoes"), {
+    nomeApp,
+    email,
+    linkTeste,
+    quantidade: Number(quantidade),
+    prazo,
+    instrucoes,
+    status: "aguardando",
+    grupoGoogle: "",
+    criadoEm: new Date()
+  });
+
+  alert("Solicitação enviada! Em breve entraremos em contato.");
+});
+
+</script>
+
+</body>
+</html>
