@@ -120,21 +120,43 @@ window.cadastrar = async function() {
     return;
   }
 
-  await addDoc(collection(db, "usuarios"), {
-    nome,
-    email,
-    whatsapp,
-    modelo,
-    versao,
-    tipoCelular,
-    tipo: "testador",
-    criadoEm: new Date()
-  });
+  try {
 
-  alert("Cadastro realizado com sucesso!");
-  window.location.href = "index.html";
+    await addDoc(collection(db, "testadores"), {
+
+      nome,
+      email,
+      whatsapp,
+      modelo,
+      versao,
+      tipoCelular,
+      tipo: "testador",
+      criadoEm: new Date()
+    });
+
+    // 🔵 Criar mensagem visual na tela
+    const msg = document.createElement("div");
+    msg.innerHTML = "✅ Cadastro realizado com sucesso! Entraremos em contato em breve.";
+    msg.style.marginTop = "20px";
+    msg.style.padding = "15px";
+    msg.style.background = "#16a34a";
+    msg.style.borderRadius = "8px";
+    msg.style.textAlign = "center";
+    msg.style.fontWeight = "bold";
+
+    document.querySelector(".container").appendChild(msg);
+
+    // 🔒 Desabilitar botão
+    document.querySelector("button").disabled = true;
+    document.querySelector("button").innerText = "Enviado";
+
+    // ⏳ Redirecionar após 2 segundos
+    setTimeout(() => {
+      window.location.href = "index.html";
+    }, 2000);
+
+  } catch (error) {
+    alert("Erro ao enviar cadastro. Tente novamente.");
+    console.error(error);
+  }
 }
-</script>
-
-</body>
-</html>
