@@ -166,14 +166,19 @@ botao.addEventListener("click", async () => {
       window.location.href = "index.html";
     }, 2000);
 
-  catch (error) {
-  console.error("ERRO FIREBASE:", error);
-  alert(error.message);
-}
+} catch (error) {
+
+    console.error("ERRO FIREBASE:", error);
+    alert(error.message);
+
+    botao.disabled = false;
+    botao.innerText = "Enviar solicitação";
 
 }
 
-
-});
+});   // 🔥 FECHA O addEventListener
 
 </script>
+
+
+
