@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
@@ -62,12 +61,26 @@ h1{
     margin-top:4px;
 }
 
-a{
+pre{
+    white-space: pre-wrap;
+    background:#0f172a;
+    padding:10px;
+    border-radius:6px;
     color:#38bdf8;
-    text-decoration:none;
+    margin-top:5px;
+    font-size:13px;
+}
+
+button{
+    margin-top:10px;
+    padding:8px 12px;
+    background:#ef4444;
+    border:none;
+    border-radius:6px;
+    color:white;
+    cursor:pointer;
 }
 </style>
-
 </head>
 
 <body>
@@ -78,7 +91,6 @@ a{
 
 <div class="main">
 
-```
 <div class="coluna">
     <div class="tituloColuna">Solicitações de Empresas</div>
     <div id="listaSolicitacoes">Carregando...</div>
@@ -88,14 +100,21 @@ a{
     <div class="tituloColuna">Testadores Cadastrados</div>
     <div id="listaTestadores">Carregando...</div>
 </div>
-```
 
 </div>
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { 
+  getFirestore, 
+  collection, 
+  getDocs, 
+  query, 
+  orderBy,
+  deleteDoc,
+  doc
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
@@ -111,19 +130,31 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-/* proteção de acesso */
+/* 🔐 Proteção */
 onAuthStateChanged(auth, (user) => {
-if (!user) {
-window.location.href = "login.html";
-} else {
-// só carrega dados depois de autenticar
-
-
-}
+  if (!user) {
+    window.location.href = "login.html";
+  } else {
+    carregarSolicitacoes();
+    carregarTestadores();
+  }
 });
 
+/* 🔥 EXCLUIR REGISTRO */
+async function excluirRegistro(colecao, id){
+  const confirmar = confirm("Tem certeza que deseja excluir este registro?");
+  if(!confirmar) return;
 
-/* CARREGAR SOLICITAÇÕES (EMPRESAS) */
+  await deleteDoc(doc(db, colecao, id));
+
+  if(colecao === "solicitacoes"){
+    carregarSolicitacoes();
+  } else {
+    carregarTestadores();
+  }
+}
+
+/* 🔵 CARREGAR EMPRESAS */
 async function carregarSolicitacoes(){
     const lista = document.getElementById("listaSolicitacoes");
     lista.innerHTML = "";
@@ -131,8 +162,14 @@ async function carregarSolicitacoes(){
     const q = query(collection(db, "solicitacoes"), orderBy("criadoEm","desc"));
     const snap = await getDocs(q);
 
-    snap.forEach(doc=>{
-        const s = doc.data();
+    if(snap.empty){
+        lista.innerHTML = "Nenhuma solicitação encontrada.";
+        return;
+    }
+
+    snap.forEach(docSnap=>{
+        const s = docSnap.data();
+        const id = docSnap.id;
 
         const div = document.createElement("div");
         div.className="card";
@@ -140,40 +177,42 @@ async function carregarSolicitacoes(){
         div.innerHTML=`
 <div class="nome">${s.nomeApp || "App sem nome"}</div>
 <div class="info">Email: ${s.email || "-"}</div>
+<div class="info">Link: ${s.linkTeste || "-"}</div>
 <div class="info">Quantidade: ${s.quantidade || "-"}</div>
 <div class="info">Prazo: ${s.prazo || "-"}</div>
 <div class="info">Status: ${s.status || "-"}</div>
-<div class="info"><a href="${s.linkTeste}" target="_blank">Abrir teste</a></div>
 
 <div class="info" style="margin-top:10px;">
-<strong>Instruções para os testadores:</strong>
+<strong>Instruções:</strong>
 </div>
 
-<pre style="
-white-space: pre-wrap;
-background:#0f172a;
-padding:10px;
-border-radius:6px;
-color:#38bdf8;
-margin-top:5px;
-font-size:13px;
-">
-${s.instrucoes || "Nenhuma instrução informada"}
-</pre>
+<pre>${s.instrucoes || "Nenhuma instrução informada"}</pre>
+
+<button onclick="excluirRegistro('solicitacoes','${id}')">
+Excluir
+</button>
 `;
 
+        lista.appendChild(div);
     });
 }
 
-/* CARREGAR TESTADORES */
+/* 🟢 CARREGAR TESTADORES */
 async function carregarTestadores(){
     const lista = document.getElementById("listaTestadores");
     lista.innerHTML = "";
 
-    const snap = await getDocs(collection(db,"testadores"));
+    const q = query(collection(db,"testadores"), orderBy("criadoEm","desc"));
+    const snap = await getDocs(q);
 
-    snap.forEach(doc=>{
-        const t = doc.data();
+    if(snap.empty){
+        lista.innerHTML = "Nenhum testador cadastrado.";
+        return;
+    }
+
+    snap.forEach(docSnap=>{
+        const t = docSnap.data();
+        const id = docSnap.id;
 
         const div = document.createElement("div");
         div.className="card";
@@ -186,15 +225,17 @@ async function carregarTestadores(){
 <div class="info">Modelo: ${t.modelo || "-"}</div>
 <div class="info">Versão: ${t.versao || "-"}</div>
 <div class="info">Status: ${t.status || "-"}</div>
-`;
 
+<button onclick="excluirRegistro('testadores','${id}')">
+Excluir
+</button>
+`;
 
         lista.appendChild(div);
     });
 }
 
-carregarSolicitacoes();
-carregarTestadores();
+window.excluirRegistro = excluirRegistro;
 
 </script>
 
