@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Login Admin - ValidaPlay</title>
+
+<style>
+body{
+    font-family:Arial;
+    background:#0f172a;
+    color:white;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+}
+
+.box{
+    background:#020617;
+    padding:30px;
+    border-radius:12px;
+    width:320px;
+    border:1px solid #1e293b;
+}
+
+input{
+    width:100%;
+    padding:12px;
+    margin-top:10px;
+    margin-bottom:15px;
+    border-radius:6px;
+    border:none;
+    background:#020617;
+    border:1px solid #334155;
+    color:white;
+}
+
+button{
+    width:100%;
+    padding:12px;
+    background:#38bdf8;
+    border:none;
+    border-radius:8px;
+    font-weight:bold;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="box">
+<h2>Painel Admin</h2>
+
+<input type="email" id="email" placeholder="Email">
+<input type="password" id="senha" placeholder="Senha">
+
+<button onclick="logar()">Entrar</button>
+
+<p id="erro"></p>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBp43RboeJ5eQildnFcTc7JtkHa0xvQdnM",
+  authDomain: "validaplay.firebaseapp.com",
+  projectId: "validaplay",
+  storageBucket: "validaplay.firebasestorage.app",
+  messagingSenderId: "731420070879",
+  appId: "1:731420070879:web:2b7a466b362211d8256a6a"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+window.logar = async function(){
+  const email = document.getElementById("email").value;
+  const senha = document.getElementById("senha").value;
+
+  try{
+    await signInWithEmailAndPassword(auth, email, senha);
+    window.location.href = "admin.html";
+  }catch(e){
+    document.getElementById("erro").innerText = "Email ou senha incorretos";
+  }
+}
+</script>
+
+</body>
+</html>
