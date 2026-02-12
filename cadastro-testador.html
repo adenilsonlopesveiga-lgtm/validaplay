@@ -98,82 +98,11 @@ small{
 
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+<script type="module" src="firebase.js"></script>
+<script type="module" src="cadastro-testador.js"></script>
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBp43RboeJ5eQildnFcTc7JtkHa0xvQdnM",
-  authDomain: "validaplay.firebaseapp.com",
-  projectId: "validaplay",
-  storageBucket: "validaplay.firebasestorage.app",
-  messagingSenderId: "731420070879",
-  appId: "1:731420070879:web:2b7a466b362211d8256a6a"
-};
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
 
-const botao = document.getElementById("btnCadastrar");
-
-botao.addEventListener("click", async () => {
-
-  const nome = document.getElementById("nome").value.trim();
-  const email = document.getElementById("email").value.trim();
-  const whatsapp = document.getElementById("whatsapp").value.trim();
-  const modelo = document.getElementById("modelo").value.trim();
-  const versao = document.getElementById("versao").value.trim();
-  const tipoCelular = document.getElementById("tipoCelular").value;
-
-  if(!nome || !email){
-    alert("Preencha nome e email.");
-    return;
-  }
-
-  try {
-
-    botao.disabled = true;
-    botao.innerText = "Enviando...";
-
-    await addDoc(collection(db, "testadores"), {
-      nome,
-      email,
-      whatsapp,
-      modelo,
-      versao,
-      tipoCelular,
-      tipo: "testador",
-      status: "pendente",
-
-      criadoEm: serverTimestamp()
-    });
-
-    const msg = document.createElement("div");
-    msg.innerHTML = "✅ Cadastro realizado com sucesso! Redirecionando...";
-    msg.style.marginTop = "20px";
-    msg.style.padding = "15px";
-    msg.style.background = "#16a34a";
-    msg.style.borderRadius = "8px";
-    msg.style.textAlign = "center";
-    msg.style.fontWeight = "bold";
-
-    document.querySelector(".container").appendChild(msg);
-
-    setTimeout(() => {
-      window.location.href = "index.html";
-    }, 2000);
-
-  } catch (error) {
-
-    console.error("Erro Firestore:", error);
-    alert("Erro ao enviar cadastro. Tente novamente.");
-
-    botao.disabled = false;
-    botao.innerText = "Cadastrar";
-  }
-
-});
-</script>
 
 </body>
 </html>
