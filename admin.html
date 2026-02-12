@@ -153,7 +153,7 @@ onAuthStateChanged(auth, (user) => {
     return;
   }
 
-  if (user.email !== ADMIN_EMAIL) {
+  if (user.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
     alert("Acesso restrito.");
     auth.signOut();
     window.location.href = "login.html";
@@ -164,6 +164,7 @@ onAuthStateChanged(auth, (user) => {
   carregarSolicitacoes();
   carregarTestadores();
 });
+
 
 
 /* 🔥 EXCLUIR */
