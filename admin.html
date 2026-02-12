@@ -155,31 +155,33 @@ onAuthStateChanged(auth, async (user) => {
 
   try {
 
-    const userDoc = await getDoc(doc(db, "usuario", user.uid));
+    const userRef = doc(db, "usuarios", user.uid);
+    const userSnap = await getDoc(userRef);
 
-    if (!userDoc.exists()) {
-      alert("Usuário não autorizado.");
-      auth.signOut();
+    if (!userSnap.exists()) {
+      alert("Usuário não encontrado na base.");
+      await auth.signOut();
       window.location.href = "login.html";
       return;
     }
 
-    const userData = userDoc.data();
+    const dados = userSnap.data();
 
-    if (userData.tipo !== "admin") {
+    if (dados.tipo !== "admin") {
       alert("Acesso restrito ao administrador.");
-      auth.signOut();
+      await auth.signOut();
       window.location.href = "login.html";
       return;
     }
 
-    // ✅ Se for admin verdadeiro
+    // ✅ Se chegou aqui, é admin verdadeiro
     carregarSolicitacoes();
     carregarTestadores();
 
   } catch (error) {
     console.error("Erro ao validar admin:", error);
-    alert("Erro de validação.");
+    alert("Erro interno de validação.");
+    await auth.signOut();
     window.location.href = "login.html";
   }
 
