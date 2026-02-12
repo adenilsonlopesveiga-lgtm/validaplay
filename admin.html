@@ -74,12 +74,23 @@ pre{
 button{
     margin-top:10px;
     padding:8px 12px;
-    background:#ef4444;
     border:none;
     border-radius:6px;
     color:white;
     cursor:pointer;
+    margin-right:5px;
 }
+
+.btn-danger{ background:#ef4444; }
+.btn-success{ background:#22c55e; }
+.btn-warning{ background:#f59e0b; }
+.btn-secondary{ background:#64748b; }
+
+.status-aprovado{ color:#22c55e; }
+.status-bloqueado{ color:#ef4444; }
+.status-pendente{ color:#f59e0b; }
+.status-rejeitado{ color:#64748b; }
+
 </style>
 </head>
 
@@ -120,7 +131,7 @@ import {
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBp43RboeJ5eQildnFcTc7JtkHa0xvQdnM",
+  apiKey: "SUA_API_KEY",
   authDomain: "validaplay.firebaseapp.com",
   projectId: "validaplay",
   storageBucket: "validaplay.firebasestorage.app",
@@ -132,7 +143,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-/* 🔐 Proteção */
+/* 🔐 PROTEÇÃO */
 onAuthStateChanged(auth, (user) => {
   if (!user) {
     window.location.href = "login.html";
@@ -142,9 +153,9 @@ onAuthStateChanged(auth, (user) => {
   }
 });
 
-/* 🔥 EXCLUIR REGISTRO */
+/* 🔥 EXCLUIR */
 async function excluirRegistro(colecao, id){
-  const confirmar = confirm("Tem certeza que deseja excluir este registro?");
+  const confirmar = confirm("Tem certeza que deseja excluir?");
   if(!confirmar) return;
 
   await deleteDoc(doc(db, colecao, id));
@@ -155,6 +166,8 @@ async function excluirRegistro(colecao, id){
     carregarTestadores();
   }
 }
+
+/* 🔄 ATUALIZAR STATUS */
 async function atualizarStatus(colecao, id, novoStatus){
   await updateDoc(doc(db, colecao, id), {
     status: novoStatus
@@ -167,10 +180,10 @@ async function atualizarStatus(colecao, id, novoStatus){
   }
 }
 
+window.excluirRegistro = excluirRegistro;
 window.atualizarStatus = atualizarStatus;
 
-
-/* 🔵 CARREGAR EMPRESAS */
+/* 🔵 EMPRESAS */
 async function carregarSolicitacoes(){
     const lista = document.getElementById("listaSolicitacoes");
     lista.innerHTML = "";
@@ -186,6 +199,7 @@ async function carregarSolicitacoes(){
     snap.forEach(docSnap=>{
         const s = docSnap.data();
         const id = docSnap.id;
+        const status = s.status || "pendente";
 
         const div = document.createElement("div");
         div.className="card";
@@ -196,40 +210,42 @@ async function carregarSolicitacoes(){
 <div class="info">Link: ${s.linkTeste || "-"}</div>
 <div class="info">Quantidade: ${s.quantidade || "-"}</div>
 <div class="info">Prazo: ${s.prazo || "-"}</div>
-<div class="info">Status: <strong>${s.status}</strong></div>
 
-<div style="margin-top:10px;">
-  ${s.status === "pendente" ? `
-    <button onclick="atualizarStatus('solicitacoes','${id}','aprovado')">Aprovar</button>
-    <button onclick="atualizarStatus('solicitacoes','${id}','rejeitado')">Rejeitar</button>
-  ` : ''}
-
-  ${s.status === "aprovado" ? `
-    <button onclick="atualizarStatus('solicitacoes','${id}','bloqueado')">Bloquear</button>
-  ` : ''}
-
-  ${s.status === "bloqueado" ? `
-    <button onclick="atualizarStatus('solicitacoes','${id}','aprovado')">Reativar</button>
-  ` : ''}
-
-  <button onclick="excluirRegistro('solicitacoes','${id}')">Excluir</button>
+<div class="info">Status:
+  <strong class="status-${status}">
+    ${status}
+  </strong>
 </div>
 
+<div style="margin-top:10px;">
+  ${status === "pendente" ? `
+    <button class="btn-success" onclick="atualizarStatus('solicitacoes','${id}','aprovado')">Aprovar</button>
+    <button class="btn-secondary" onclick="atualizarStatus('solicitacoes','${id}','rejeitado')">Rejeitar</button>
+  ` : ''}
+
+  ${status === "aprovado" ? `
+    <button class="btn-warning" onclick="atualizarStatus('solicitacoes','${id}','bloqueado')">Bloquear</button>
+  ` : ''}
+
+  ${status === "bloqueado" ? `
+    <button class="btn-success" onclick="atualizarStatus('solicitacoes','${id}','aprovado')">Reativar</button>
+  ` : ''}
+
+  <button class="btn-danger" onclick="excluirRegistro('solicitacoes','${id}')">Excluir</button>
+</div>
 
 <div class="info" style="margin-top:10px;">
 <strong>Instruções:</strong>
 </div>
 
 <pre>${s.instrucoes || "Nenhuma instrução informada"}</pre>
-
-
 `;
 
         lista.appendChild(div);
     });
 }
 
-/* 🟢 CARREGAR TESTADORES */
+/* 🟢 TESTADORES */
 async function carregarTestadores(){
     const lista = document.getElementById("listaTestadores");
     lista.innerHTML = "";
@@ -245,6 +261,7 @@ async function carregarTestadores(){
     snap.forEach(docSnap=>{
         const t = docSnap.data();
         const id = docSnap.id;
+        const status = t.status || "pendente";
 
         const div = document.createElement("div");
         div.className="card";
@@ -256,35 +273,36 @@ async function carregarTestadores(){
 <div class="info">Tipo de celular: ${t.tipoCelular || "-"}</div>
 <div class="info">Modelo: ${t.modelo || "-"}</div>
 <div class="info">Versão: ${t.versao || "-"}</div>
-<div class="info">Status: <strong>${t.status}</strong></div>
 
-<div style="margin-top:10px;">
-  ${t.status === "pendente" ? `
-    <button onclick="atualizarStatus('testadores','${id}','aprovado')">Aprovar</button>
-  ` : ''}
-
-  ${t.status === "aprovado" ? `
-    <button onclick="atualizarStatus('testadores','${id}','bloqueado')">Bloquear</button>
-  ` : ''}
-
-  ${t.status === "bloqueado" ? `
-    <button onclick="atualizarStatus('testadores','${id}','aprovado')">Reativar</button>
-  ` : ''}
-
-  <button onclick="excluirRegistro('testadores','${id}')">Excluir</button>
+<div class="info">Status:
+  <strong class="status-${status}">
+    ${status}
+  </strong>
 </div>
 
+<div style="margin-top:10px;">
+  ${status === "pendente" ? `
+    <button class="btn-success" onclick="atualizarStatus('testadores','${id}','aprovado')">Aprovar</button>
+  ` : ''}
 
+  ${status === "aprovado" ? `
+    <button class="btn-warning" onclick="atualizarStatus('testadores','${id}','bloqueado')">Bloquear</button>
+  ` : ''}
 
+  ${status === "bloqueado" ? `
+    <button class="btn-success" onclick="atualizarStatus('testadores','${id}','aprovado')">Reativar</button>
+  ` : ''}
+
+  <button class="btn-danger" onclick="excluirRegistro('testadores','${id}')">Excluir</button>
+</div>
 `;
 
         lista.appendChild(div);
     });
 }
 
-window.excluirRegistro = excluirRegistro;
-
 </script>
+
 
 </body>
 </html>
