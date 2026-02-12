@@ -1,0 +1,12 @@
+User-agent: *
+
+# Permitir páginas públicas
+Allow: /
+
+# Bloquear área administrativa
+Disallow: /login.html
+Disallow: /admin.html
+Disallow: /painel.html
+
+# Sitemap
+Sitemap: https://validaplay.com.br/sitemap.xml
