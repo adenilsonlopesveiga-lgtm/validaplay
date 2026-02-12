@@ -146,6 +146,8 @@ const auth = getAuth(app);
 /* 🔐 PROTEÇÃO */
 const ADMIN_EMAIL = "SEU_EMAIL_AQUI";
 
+const ADMIN_EMAIL = "adenilsonlopesveiga@gmail.com"; // COLOQUE SEU EMAIL REAL AQUI
+
 onAuthStateChanged(auth, (user) => {
 
   if (!user) {
@@ -154,7 +156,7 @@ onAuthStateChanged(auth, (user) => {
   }
 
   if (user.email !== ADMIN_EMAIL) {
-    alert("Acesso restrito.");
+    alert("Acesso restrito ao administrador.");
     auth.signOut();
     window.location.href = "login.html";
     return;
@@ -164,6 +166,7 @@ onAuthStateChanged(auth, (user) => {
   carregarSolicitacoes();
   carregarTestadores();
 });
+
 
 
 /* 🔥 EXCLUIR */
