@@ -1,37 +1,64 @@
 import { db } from "./firebase.js";
-import { collection, addDoc, serverTimestamp } 
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const btn = document.getElementById("btnCadastrar");
+
+btn.addEventListener("click", async () => {
+
+    const nome = document.getElementById("nome").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const whatsapp = document.getElementById("whatsapp").value.trim();
+    const tipoCelular = document.getElementById("tipoCelular").value;
+    const modelo = document.getElementById("modelo").value.trim();
+    const versao = document.getElementById("versao").value.trim();
+
+    if (!nome || !email) {
+        alert("Preencha nome e email.");
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerText = "Cadastrando...";
+
+    try {
+
+        // 🔥 1. Salvar no Firestore
+        await addDoc(collection(db, "testadores"), {
+            nome,
+            email,
+            whatsapp,
+            tipoCelular,
+            modelo,
+            versao,
+            criadoEm: serverTimestamp()
+        });
+
+        // 📩 2. Chamar Cloud Function para enviar email
+        const response = await fetch("https://us-central1-validaplay.cloudfunctions.net/enviarEmail", {
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+        nome,
+        email
+    })
+});
+
+if (!response.ok) {
+    throw new Error("Erro ao enviar email");
+}
 
 
-const form = document.querySelector("form");
+        alert("Cadastro realizado com sucesso!");
+        window.location.href = "obrigado.html";
 
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
+    } catch (error) {
+        console.error(error);
+        alert("Erro ao cadastrar. Tente novamente.");
+    }
 
-  const nome = document.querySelector("#nome").value;
-  const email = document.querySelector("#email").value;
-  const celular = document.querySelector("#celular").value;
-  const cidade = document.querySelector("#cidade").value;
-  const estado = document.querySelector("#estado").value;
+    btn.disabled = false;
+    btn.innerText = "Cadastrar";
 
-  try {
-
-    await addDoc(collection(window.db, "testadores"), {
-      nome,
-      email,
-      celular,
-      cidade,
-      estado,
-      status: "disponivel",
-      criadoEm: serverTimestamp()
-    });
-
-    alert("Cadastro realizado! Você será avisado quando houver um teste disponível.");
-
-    form.reset();
-
-  } catch (error) {
-    alert("Erro ao cadastrar. Tente novamente.");
-    console.error(error);
-  }
 });
