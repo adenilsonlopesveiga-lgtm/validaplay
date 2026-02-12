@@ -113,8 +113,10 @@ import {
   query, 
   orderBy,
   deleteDoc,
-  doc
+  doc,
+  updateDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
@@ -153,6 +155,20 @@ async function excluirRegistro(colecao, id){
     carregarTestadores();
   }
 }
+async function atualizarStatus(colecao, id, novoStatus){
+  await updateDoc(doc(db, colecao, id), {
+    status: novoStatus
+  });
+
+  if(colecao === "solicitacoes"){
+    carregarSolicitacoes();
+  } else {
+    carregarTestadores();
+  }
+}
+
+window.atualizarStatus = atualizarStatus;
+
 
 /* 🔵 CARREGAR EMPRESAS */
 async function carregarSolicitacoes(){
@@ -180,7 +196,25 @@ async function carregarSolicitacoes(){
 <div class="info">Link: ${s.linkTeste || "-"}</div>
 <div class="info">Quantidade: ${s.quantidade || "-"}</div>
 <div class="info">Prazo: ${s.prazo || "-"}</div>
-<div class="info">Status: ${s.status || "-"}</div>
+<div class="info">Status: <strong>${s.status}</strong></div>
+
+<div style="margin-top:10px;">
+  ${s.status === "pendente" ? `
+    <button onclick="atualizarStatus('solicitacoes','${id}','aprovado')">Aprovar</button>
+    <button onclick="atualizarStatus('solicitacoes','${id}','rejeitado')">Rejeitar</button>
+  ` : ''}
+
+  ${s.status === "aprovado" ? `
+    <button onclick="atualizarStatus('solicitacoes','${id}','bloqueado')">Bloquear</button>
+  ` : ''}
+
+  ${s.status === "bloqueado" ? `
+    <button onclick="atualizarStatus('solicitacoes','${id}','aprovado')">Reativar</button>
+  ` : ''}
+
+  <button onclick="excluirRegistro('solicitacoes','${id}')">Excluir</button>
+</div>
+
 
 <div class="info" style="margin-top:10px;">
 <strong>Instruções:</strong>
@@ -188,9 +222,7 @@ async function carregarSolicitacoes(){
 
 <pre>${s.instrucoes || "Nenhuma instrução informada"}</pre>
 
-<button onclick="excluirRegistro('solicitacoes','${id}')">
-Excluir
-</button>
+
 `;
 
         lista.appendChild(div);
@@ -224,11 +256,26 @@ async function carregarTestadores(){
 <div class="info">Tipo de celular: ${t.tipoCelular || "-"}</div>
 <div class="info">Modelo: ${t.modelo || "-"}</div>
 <div class="info">Versão: ${t.versao || "-"}</div>
-<div class="info">Status: ${t.status || "-"}</div>
+<div class="info">Status: <strong>${t.status}</strong></div>
 
-<button onclick="excluirRegistro('testadores','${id}')">
-Excluir
-</button>
+<div style="margin-top:10px;">
+  ${t.status === "pendente" ? `
+    <button onclick="atualizarStatus('testadores','${id}','aprovado')">Aprovar</button>
+  ` : ''}
+
+  ${t.status === "aprovado" ? `
+    <button onclick="atualizarStatus('testadores','${id}','bloqueado')">Bloquear</button>
+  ` : ''}
+
+  ${t.status === "bloqueado" ? `
+    <button onclick="atualizarStatus('testadores','${id}','aprovado')">Reativar</button>
+  ` : ''}
+
+  <button onclick="excluirRegistro('testadores','${id}')">Excluir</button>
+</div>
+
+
+
 `;
 
         lista.appendChild(div);
