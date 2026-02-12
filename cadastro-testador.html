@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
@@ -55,11 +54,15 @@ button{
     cursor:pointer;
 }
 
+button:disabled{
+    opacity:0.6;
+    cursor:not-allowed;
+}
+
 small{
     color:#94a3b8;
 }
 </style>
-
 </head>
 
 <body>
@@ -68,23 +71,28 @@ small{
 
 <h1>Quero ser Testador</h1>
 
-<label>Nome completo</label> <input type="text" id="nome">
+<label>Nome completo</label>
+<input type="text" id="nome">
 
-<label>Email</label> <input type="email" id="email">
+<label>Email</label>
+<input type="email" id="email">
 
-<label>WhatsApp</label> <input type="text" id="whatsapp">
+<label>WhatsApp</label>
+<input type="text" id="whatsapp">
 
-<label>Tipo de celular</label> <select id="tipoCelular">
-
+<label>Tipo de celular</label>
+<select id="tipoCelular">
 <option>Android</option>
 <option>iPhone</option>
 </select>
 
-<label>Modelo do aparelho</label> <input type="text" id="modelo" placeholder="Ex: Samsung A32">
+<label>Modelo do aparelho</label>
+<input type="text" id="modelo" placeholder="Ex: Samsung A32">
 
-<label>Versão do Android/iOS</label> <input type="text" id="versao" placeholder="Ex: Android 13">
+<label>Versão do Android/iOS</label>
+<input type="text" id="versao" placeholder="Ex: Android 13">
 
-<button onclick="cadastrar()">Cadastrar</button>
+<button id="btnCadastrar">Cadastrar</button>
 
 <small>Após cadastro você receberá convites para testar aplicativos e ganhar recompensas.</small>
 
@@ -92,14 +100,7 @@ small{
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { 
-  getFirestore, 
-  collection, 
-  addDoc, 
-  query, 
-  where, 
-  getDocs 
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBp43RboeJ5eQildnFcTc7JtkHa0xvQdnM",
@@ -113,11 +114,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-window.cadastrar = async function() {
+const botao = document.getElementById("btnCadastrar");
 
-  const botao = document.querySelector("button");
-  botao.disabled = true;
-  botao.innerText = "Enviando...";
+botao.addEventListener("click", async () => {
 
   const nome = document.getElementById("nome").value.trim();
   const email = document.getElementById("email").value.trim();
@@ -127,28 +126,14 @@ window.cadastrar = async function() {
   const tipoCelular = document.getElementById("tipoCelular").value;
 
   if(!nome || !email){
-    alert("Preencha nome e email");
-    botao.disabled = false;
-    botao.innerText = "Cadastrar";
+    alert("Preencha nome e email.");
     return;
   }
 
   try {
 
-    // 🔎 Verificar se já existe email cadastrado
-    const q = query(
-      collection(db, "testadores"),
-      where("email", "==", email)
-    );
-
-    const snapshot = await getDocs(q);
-
-    if (!snapshot.empty) {
-      alert("Este email já está cadastrado.");
-      botao.disabled = false;
-      botao.innerText = "Cadastrar";
-      return;
-    }
+    botao.disabled = true;
+    botao.innerText = "Enviando...";
 
     await addDoc(collection(db, "testadores"), {
       nome,
@@ -159,10 +144,9 @@ window.cadastrar = async function() {
       tipoCelular,
       tipo: "testador",
       status: "ativo",
-      criadoEm: new Date()
+      criadoEm: serverTimestamp()
     });
 
-    // 🔵 Mensagem visual fixa
     const msg = document.createElement("div");
     msg.innerHTML = "✅ Cadastro realizado com sucesso! Redirecionando...";
     msg.style.marginTop = "20px";
@@ -174,17 +158,21 @@ window.cadastrar = async function() {
 
     document.querySelector(".container").appendChild(msg);
 
-    botao.innerText = "Enviado";
-
     setTimeout(() => {
       window.location.href = "index.html";
     }, 2000);
 
   } catch (error) {
+
+    console.error("Erro Firestore:", error);
     alert("Erro ao enviar cadastro. Tente novamente.");
-    console.error(error);
+
     botao.disabled = false;
     botao.innerText = "Cadastrar";
   }
-}
+
+});
 </script>
+
+</body>
+</html>
