@@ -199,6 +199,88 @@ Teste Fechado Google Play
 Área administrativa
 </a>
 </footer>
+<!-- ================= FORMULÁRIO ================= -->
+
+<section style="margin-top:60px; text-align:center;">
+    <h2>Quero receber informações</h2>
+
+    <form id="formLead" style="margin-top:20px;">
+        <input type="text" id="nome" placeholder="Seu nome" required
+        style="padding:10px; margin:5px; width:250px;">
+
+        <input type="email" id="email" placeholder="Seu email" required
+        style="padding:10px; margin:5px; width:250px;">
+
+        <button type="submit"
+        style="padding:10px 20px; background:#38bdf8; border:none; border-radius:6px;">
+        Enviar
+        </button>
+    </form>
+
+    <p id="mensagem" style="margin-top:15px;"></p>
+</section>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, addDoc, serverTimestamp }
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBp43RboeJ5eQildnFcTc7JtkHa0xvQdnM",
+  authDomain: "validaplay.firebaseapp.com",
+  projectId: "validaplay",
+  storageBucket: "validaplay.firebasestorage.app",
+  messagingSenderId: "731420070879",
+  appId: "1:731420070879:web:2b7a466b362211d8256a6a"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const form = document.getElementById("formLead");
+const mensagem = document.getElementById("mensagem");
+
+form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const nome = document.getElementById("nome").value.trim();
+    const email = document.getElementById("email").value.trim();
+
+    if(!nome || !email){
+        mensagem.innerText = "Preencha todos os campos.";
+        return;
+    }
+
+    try{
+
+        mensagem.innerText = "Enviando...";
+
+        // 🔹 Salva no Firestore
+        await addDoc(collection(db, "leads"), {
+            nome,
+            email,
+            criadoEm: serverTimestamp()
+        });
+
+        // 🔹 Chama sua Cloud Function para enviar email
+        await fetch("https://us-central1-validaplay.cloudfunctions.net/enviarEmail", {
+
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json"
+            },
+            body: JSON.stringify({ nome, email })
+        });
+
+        mensagem.innerText = "Cadastro realizado com sucesso!";
+        form.reset();
+
+    }catch(error){
+        console.error(error);
+        mensagem.innerText = "Erro ao enviar. Tente novamente.";
+    }
+});
+</script>
 
 </body>
 </html>

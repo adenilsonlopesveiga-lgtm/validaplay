@@ -253,7 +253,8 @@ async function carregarSolicitacoes(){
 </div>
 
 <div style="margin-top:10px;">
-  ${status === "pendente" ? `
+  ${status === "pendente" || status === "novo" ? `
+
     <button class="btn-success" onclick="atualizarStatus('solicitacoes','${id}','aprovado')">Aprovar</button>
     <button class="btn-secondary" onclick="atualizarStatus('solicitacoes','${id}','rejeitado')">Rejeitar</button>
   ` : ''}
@@ -296,7 +297,9 @@ async function carregarTestadores(){
     snap.forEach(docSnap=>{
         const t = docSnap.data();
         const id = docSnap.id;
-        const status = t.status || "pendente";
+        const status = ["pendente","aprovado","bloqueado","rejeitado"]
+  .includes(t.status) ? t.status : "pendente";
+
 
         const div = document.createElement("div");
         div.className="card";
@@ -316,8 +319,10 @@ async function carregarTestadores(){
 </div>
 
 <div style="margin-top:10px;">
+
   ${status === "pendente" ? `
     <button class="btn-success" onclick="atualizarStatus('testadores','${id}','aprovado')">Aprovar</button>
+    <button class="btn-secondary" onclick="atualizarStatus('testadores','${id}','rejeitado')">Rejeitar</button>
   ` : ''}
 
   ${status === "aprovado" ? `
@@ -329,7 +334,9 @@ async function carregarTestadores(){
   ` : ''}
 
   <button class="btn-danger" onclick="excluirRegistro('testadores','${id}')">Excluir</button>
+
 </div>
+
 `;
 
         lista.appendChild(div);

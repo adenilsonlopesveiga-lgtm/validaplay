@@ -17,6 +17,12 @@ btn.addEventListener("click", async () => {
         return;
     }
 
+    // 🔒 validação básica de email
+    if (!email.includes("@")) {
+        alert("Email inválido.");
+        return;
+    }
+
     btn.disabled = true;
     btn.innerText = "Cadastrando...";
 
@@ -30,35 +36,43 @@ btn.addEventListener("click", async () => {
             tipoCelular,
             modelo,
             versao,
+            status: "pendente",
+
             criadoEm: serverTimestamp()
         });
 
-        // 📩 2. Chamar Cloud Function para enviar email
+        // 📩 2. Enviar email via Cloud Function
         const response = await fetch("https://us-central1-validaplay.cloudfunctions.net/enviarEmail", {
-    method: "POST",
-    headers: {
-        "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-        nome,
-        email
-    })
-});
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                nome,
+                email,
+                whatsapp,
+                tipoCelular,
+                modelo,
+                versao
+            })
+        });
 
-if (!response.ok) {
-    throw new Error("Erro ao enviar email");
-}
+        if (!response.ok) {
+            throw new Error("Erro ao enviar email");
+        }
 
+        // ✅ Redirecionar
+        document.querySelector(".container").innerHTML = `
+  <h1>Cadastro realizado com sucesso 🎉</h1>
+  <p>Em breve entraremos em contato com você.</p>
+`;
 
-        alert("Cadastro realizado com sucesso!");
-        window.location.href = "obrigado.html";
 
     } catch (error) {
-        console.error(error);
+        console.error("Erro:", error);
         alert("Erro ao cadastrar. Tente novamente.");
+        btn.disabled = false;
+        btn.innerText = "Cadastrar";
     }
-
-    btn.disabled = false;
-    btn.innerText = "Cadastrar";
 
 });
