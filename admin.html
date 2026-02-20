@@ -112,13 +112,23 @@ button{
 </head>
 
 
-</div>
-
 <body>
 
 <header>
   <h1>Painel Administrativo - ValidaPlay</h1>
-
+  
+<button onclick="logout()" style="
+  background:#ef4444;
+  padding:10px 15px;
+  border-radius:6px;
+  color:white;
+  border:none;
+  cursor:pointer;
+  margin-left:10px;
+  font-weight:bold;
+">
+  🚪 Sair
+</button>
   <div style="margin-top:15px;">
     <a href="missoes.html" style="
       background:#38bdf8;
@@ -263,6 +273,14 @@ async function atualizarStatus(colecao, id, novoStatus){
 
 window.excluirRegistro = excluirRegistro;
 window.atualizarStatus = atualizarStatus;
+
+window.logout = async function(){
+  const confirmar = confirm("Deseja sair do painel?");
+  if(!confirmar) return;
+
+  await auth.signOut();
+  window.location.href = "login.html";
+}
 
 /* 🔵 EMPRESAS */
 async function carregarSolicitacoes(){

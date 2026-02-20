@@ -112,11 +112,9 @@ const auth = getAuth(app);
 
 async function carregarMinhasMissoes(user){
 
-    
   const lista = document.getElementById("listaMissoes");
   lista.innerHTML = "";
 
-  // 🔎 Buscar documento do testador pelo UID
   const testadorRef = doc(db,"testadores", user.uid);
   const testadorSnap = await getDoc(testadorRef);
 
@@ -125,7 +123,6 @@ async function carregarMinhasMissoes(user){
     return;
   }
 
-  // 🔎 Buscar missões do testador
   const q = query(
     collection(db,"missoes"),
     where("testadorId","==", user.uid)
@@ -141,104 +138,72 @@ async function carregarMinhasMissoes(user){
   for(const docSnap of snap.docs){
 
     const m = docSnap.data();
+    const missaoId = docSnap.id;
+
+    // 👇 TUDO que usa m precisa estar aqui dentro
 
     const appSnap = await getDoc(doc(db,"solicitacoes", m.appId));
     const nomeApp = appSnap.exists() ? appSnap.data().nomeApp : "App não encontrado";
     const grupo = appSnap.exists() ? appSnap.data().grupo : "";
-const linkTeste = appSnap.exists() ? appSnap.data().linkTeste : "";
-const instrucoes = appSnap.exists() ? appSnap.data().instrucoes : "";
-
+    const linkTeste = appSnap.exists() ? appSnap.data().linkTeste : "";
+    const instrucoes = appSnap.exists() ? appSnap.data().instrucoes : "";
 
     const hoje = new Date();
     const fim = m.dataFim.toDate ? m.dataFim.toDate() : new Date(m.dataFim);
     const diasRestantes = Math.ceil((fim - hoje) / (1000*60*60*24));
 
+    const ultima = m.ultimaConfirmacao 
+      ? (m.ultimaConfirmacao.toDate ? m.ultimaConfirmacao.toDate() : new Date(m.ultimaConfirmacao))
+      : null;
+
+    let jaConfirmouHoje = false;
+
+    if (ultima) {
+      jaConfirmouHoje =
+        ultima.getDate() === hoje.getDate() &&
+        ultima.getMonth() === hoje.getMonth() &&
+        ultima.getFullYear() === hoje.getFullYear();
+    }
+
     const div = document.createElement("div");
     div.className = "card";
 
-    const ultima = m.ultimaConfirmacao 
-  ? (m.ultimaConfirmacao.toDate ? m.ultimaConfirmacao.toDate() : new Date(m.ultimaConfirmacao))
-  : null;
+    div.innerHTML = `
+      <div class="info"><strong>App:</strong> ${nomeApp}</div>
+      <div class="info">Dia Atual: ${m.diaAtual} / ${m.totalDias}</div>
+      <div class="info destaque">Dias restantes: ${diasRestantes > 0 ? diasRestantes : 0}</div>
+      <div class="info">Status: ${m.status}</div>
 
-let jaConfirmouHoje = false;
-
-if (ultima) {
-  const hoje = new Date();
-  jaConfirmouHoje =
-    ultima.getDate() === hoje.getDate() &&
-    ultima.getMonth() === hoje.getMonth() &&
-    ultima.getFullYear() === hoje.getFullYear();
-}
-
-
-   div.innerHTML = `
-  <div class="info"><strong>App:</strong> ${nomeApp}</div>
-  <div class="info">Dia Atual: ${m.diaAtual} / ${m.totalDias}</div>
-  <div class="info destaque">Dias restantes: ${diasRestantes > 0 ? diasRestantes : 0}</div>
-  <div class="info">Status: ${m.status}</div>
-
-  <div style="margin-top:15px; padding:10px; background:#0f172a; border-radius:6px;">
-    <strong>📋 Regras da Missão (ValidaPlay)</strong>
-    <ul style="margin-top:8px; padding-left:18px; color:#cbd5e1;">
-      <li>Instalar o aplicativo pelo link abaixo</li>
-      <li>Entrar no grupo de testadores</li>
-      <li>Manter o app instalado por ${m.totalDias} dias</li>
-      <li>Abrir o aplicativo diariamente</li>
-      <li>Confirmar atividade todos os dias</li>
-      <li>Não desinstalar antes do prazo</li>
-    </ul>
-  </div>
-
-  <div style="margin-top:15px; padding:10px; background:#0f172a; border-radius:6px;">
-    <strong>📌 Instruções do Desenvolvedor</strong>
-    <div class="info" style="margin-top:6px;">
-      <strong>Grupo:</strong> 
-      <a href="${grupo}" target="_blank" style="color:#38bdf8;">
-        ${grupo || "Não informado"}
-      </a>
-    </div>
-    <div class="info">
-      <strong>Link do Teste:</strong> 
-      <a href="${linkTeste}" target="_blank" style="color:#38bdf8;">
-        ${linkTeste || "Não informado"}
-      </a>
-    </div>
-    <div class="info" style="margin-top:6px;">
-      ${instrucoes || "Sem instruções adicionais."}
-    </div>
-  </div>
-
-  ${m.status === "em_andamento" ? `
-    ${jaConfirmouHoje ? `
-      <button style="
-          margin-top:15px;
-          padding:8px 12px;
-          background:#64748b;
-          border:none;
-          border-radius:6px;
-          color:white;
-          font-weight:bold;
-        " disabled>
-        Atividade já confirmada hoje
-      </button>
-    ` : `
-      <button onclick="confirmarDia('${docSnap.id}', ${m.diaAtual}, ${m.totalDias})"
-        style="
-          margin-top:15px;
-          padding:8px 12px;
-          background:#22c55e;
-          border:none;
-          border-radius:6px;
-          color:white;
-          cursor:pointer;
-          font-weight:bold;
-        ">
-        Confirmar atividade de hoje
-      </button>
-    `}
-  ` : ''}
-`;
-
+      ${m.status === "em_andamento" ? `
+        ${jaConfirmouHoje ? `
+          <button disabled style="
+            margin-top:15px;
+            padding:8px 12px;
+            background:#64748b;
+            border:none;
+            border-radius:6px;
+            color:white;
+            font-weight:bold;
+          ">
+            Atividade já confirmada hoje
+          </button>
+        ` : `
+          <button onclick="confirmarDia('${missaoId}', ${m.diaAtual}, ${m.totalDias})"
+            style="
+              margin-top:15px;
+              padding:8px 12px;
+              background:#22c55e;
+              border:none;
+              border-radius:6px;
+              color:white;
+              cursor:pointer;
+              font-weight:bold;
+            ">
+            Confirmar atividade de hoje
+          </button>
+        `}
+      ` : ''}
+    `;
 
     lista.appendChild(div);
   }
@@ -248,47 +213,56 @@ window.confirmarDia = async function(missaoId, diaAtual, totalDias){
 
   try {
 
+    const missaoRef = doc(db,"missoes",missaoId);
+    const missaoSnap = await getDoc(missaoRef);
+
+    const dados = missaoSnap.data();
+
+    // 🔒 Verificar se já confirmou hoje
+    const ultima = dados.ultimaConfirmacao 
+      ? (dados.ultimaConfirmacao.toDate ? dados.ultimaConfirmacao.toDate() : new Date(dados.ultimaConfirmacao))
+      : null;
+
+    const hoje = new Date();
+
+    if(ultima &&
+      ultima.getDate() === hoje.getDate() &&
+      ultima.getMonth() === hoje.getMonth() &&
+      ultima.getFullYear() === hoje.getFullYear()
+    ){
+      alert("Você já confirmou hoje.");
+      return;
+    }
+
     const novoDia = diaAtual + 1;
+
+    const novaConfirmacao = {
+      dia: novoDia,
+      data: serverTimestamp(),
+      validado: false
+    };
+
+    const confirmacoesAtuais = dados.confirmacoes || [];
 
     const dadosAtualizacao = {
       diaAtual: novoDia,
-      ultimaConfirmacao: serverTimestamp()
+      ultimaConfirmacao: serverTimestamp(),
+      confirmacoes: [...confirmacoesAtuais, novaConfirmacao]
     };
 
     if(novoDia >= totalDias){
       dadosAtualizacao.status = "concluida";
     }
 
-    // Atualiza missão
-    await updateDoc(doc(db,"missoes",missaoId), dadosAtualizacao);
-
-    // 🔥 BLOCO AUTOMÁTICO DE ARQUIVAMENTO
-    const missaoSnap = await getDoc(doc(db,"missoes",missaoId));
-    const appId = missaoSnap.data().appId;
-
-    const q = query(
-      collection(db,"missoes"),
-      where("appId","==", appId),
-      where("status","!=", "concluida")
-    );
-
-    const pendentes = await getDocs(q);
-
-    if(pendentes.empty){
-      await updateDoc(doc(db,"solicitacoes", appId),{
-        arquivado: true,
-        dataArquivado: serverTimestamp()
-      });
-    }
+    await updateDoc(missaoRef, dadosAtualizacao);
 
     alert("Dia confirmado com sucesso!");
     location.reload();
 
   } catch(error){
     console.error(error);
-    alert("Erro ao confirmar dia.");
+    alert("Erro ao confirmar dia: " + error.message);
   }
-
 }
 
 onAuthStateChanged(auth, (user)=>{
