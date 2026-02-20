@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Detalhes do App - ValidaPlay</title>
+
+<style>
+body{
+    margin:0;
+    font-family:Arial;
+    background:#0f172a;
+    color:white;
+}
+
+header{
+    background:#020617;
+    padding:20px;
+    text-align:center;
+    border-bottom:1px solid #1e293b;
+}
+
+h1{
+    color:#38bdf8;
+}
+
+.container{
+    padding:20px;
+}
+
+.card{
+    background:#020617;
+    border:1px solid #1e293b;
+    border-radius:10px;
+    padding:15px;
+    margin-bottom:15px;
+}
+
+.titulo{
+    font-size:18px;
+    color:#38bdf8;
+    font-weight:bold;
+    margin-bottom:10px;
+}
+
+.info{
+    color:#cbd5e1;
+    margin-top:4px;
+}
+
+button{
+    margin-top:10px;
+    padding:8px 12px;
+    border:none;
+    border-radius:6px;
+    color:white;
+    cursor:pointer;
+    margin-right:5px;
+}
+
+.btn-voltar{ background:#64748b; }
+.btn-arquivar{ background:#f59e0b; }
+.btn-danger{ background:#ef4444; }
+
+.lista-item{
+    padding:6px;
+    border-bottom:1px solid #1e293b;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>Detalhes do Aplicativo</h1>
+</header>
+
+<div class="container">
+
+<button class="btn-voltar" onclick="window.location.href='admin.html'">
+⬅ Voltar ao Painel
+</button>
+
+<div id="conteudo">Carregando...</div>
+
+</div>
+
+<script type="module">
+
+import { db } from "./firebase.js";
+import {
+  doc,
+  getDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+  updateDoc
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const params = new URLSearchParams(window.location.search);
+const appId = params.get("id");
+
+const conteudo = document.getElementById("conteudo");
+
+if(!appId){
+  conteudo.innerHTML = "App não encontrado.";
+  throw new Error("ID não informado");
+}
+
+async function carregarDetalhes(){
+
+  const appRef = doc(db,"solicitacoes",appId);
+  const appSnap = await getDoc(appRef);
+
+  if(!appSnap.exists()){
+    conteudo.innerHTML = "Aplicativo não encontrado.";
+    return;
+  }
+
+  const s = appSnap.data();
+
+  const dataCriacao = s.criadoEm
+      ? new Date(s.criadoEm.seconds * 1000).toLocaleDateString()
+      : "-";
+
+  const dataInicio = s.dataInicioValidacao
+      ? new Date(s.dataInicioValidacao.seconds * 1000).toLocaleDateString()
+      : "-";
+
+  // 🔥 Buscar missões do app
+  const qMissoes = query(
+      collection(db,"missoes"),
+      where("appId","==", appId)
+  );
+
+  const snapMissoes = await getDocs(qMissoes);
+
+  let concluidas = 0;
+  let emAndamento = 0;
+
+  const listaTestadores = [];
+
+  snapMissoes.forEach(docSnap=>{
+      const m = docSnap.data();
+
+      if(m.status === "concluida") concluidas++;
+      if(m.status === "em_andamento") emAndamento++;
+
+      listaTestadores.push(m.testadorId);
+  });
+
+  const totalMissoes = snapMissoes.size;
+
+  conteudo.innerHTML = `
+    <div class="card">
+      <div class="titulo">${s.nomeApp}</div>
+
+      <div class="info"><strong>Email:</strong> ${s.email || "-"}</div>
+      <div class="info"><strong>Grupo:</strong> ${s.grupo || "-"}</div>
+      <div class="info"><strong>Quantidade:</strong> ${s.quantidade || "-"}</div>
+      <div class="info"><strong>Status:</strong> ${s.status || "-"}</div>
+      <div class="info"><strong>Criado em:</strong> ${dataCriacao}</div>
+      <div class="info"><strong>Início da Validação:</strong> ${dataInicio}</div>
+      <div class="info"><strong>Prazo:</strong> ${s.prazo || "-"}</div>
+    </div>
+
+    <div class="card">
+      <div class="titulo">Missões</div>
+
+      <div class="info">Total: ${totalMissoes}</div>
+      <div class="info">Concluídas: ${concluidas}</div>
+      <div class="info">Em andamento: ${emAndamento}</div>
+    </div>
+
+    <div class="card">
+      <div class="titulo">Testadores do App</div>
+      ${listaTestadores.length === 0 
+          ? "<div class='info'>Nenhum testador vinculado.</div>"
+          : listaTestadores.map(t => `
+              <div class="lista-item">${t}</div>
+            `).join("")
+      }
+    </div>
+
+    ${s.arquivado !== true ? `
+      <button class="btn-arquivar" onclick="arquivarApp()">
+        📦 Arquivar Manualmente
+      </button>
+    ` : `
+      <div class="info">Este app está arquivado.</div>
+    `}
+  `;
+}
+
+/* 📦 ARQUIVAR */
+window.arquivarApp = async function(){
+
+  const confirmar = confirm("Deseja arquivar este app?");
+  if(!confirmar) return;
+
+  await updateDoc(doc(db,"solicitacoes",appId),{
+      arquivado:true,
+      dataArquivado:new Date(),
+      status:"finalizado"
+  });
+
+  alert("App arquivado com sucesso!");
+
+  window.location.href = "admin.html";
+}
+
+carregarDetalhes();
+
+</script>
+
+</body>
+</html>

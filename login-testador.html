@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Login Testador - ValidaPlay</title>
+
+<style>
+body{
+  margin:0;
+  font-family:Arial;
+  background:#0f172a;
+  color:white;
+}
+
+.container{
+  max-width:400px;
+  margin:100px auto;
+  background:#020617;
+  padding:30px;
+  border-radius:12px;
+  border:1px solid #1e293b;
+}
+
+h1{
+  text-align:center;
+  color:#38bdf8;
+}
+
+input{
+  width:100%;
+  padding:12px;
+  margin-top:15px;
+  border-radius:6px;
+  border:1px solid #334155;
+  background:#020617;
+  color:white;
+}
+
+button{
+  margin-top:25px;
+  width:100%;
+  padding:14px;
+  background:#38bdf8;
+  border:none;
+  border-radius:8px;
+  font-weight:bold;
+  cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>Login do Testador</h1>
+
+<input type="email" id="email" placeholder="Email">
+<input type="password" id="senha" placeholder="Senha">
+
+<button id="btnLogin">Entrar</button>
+
+</div>
+
+<script type="module">
+
+import { auth } from "./firebase.js";
+import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+const btn = document.getElementById("btnLogin");
+
+btn.addEventListener("click", async () => {
+
+  const email = document.getElementById("email").value.trim();
+  const senha = document.getElementById("senha").value.trim();
+
+  if(!email || !senha){
+    alert("Preencha email e senha.");
+    return;
+  }
+
+  try {
+
+    await signInWithEmailAndPassword(auth, email, senha);
+
+    window.location.href = "painel-testador.html";
+
+  } catch(error){
+
+    alert("Email ou senha inválidos.");
+
+  }
+
+});
+
+</script>
+
+</body>
+</html>

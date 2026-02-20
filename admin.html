@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <title>Painel Admin - ValidaPlay</title>
 
+
+
 <style>
 body{
     margin:0;
@@ -80,6 +82,20 @@ button{
     cursor:pointer;
     margin-right:5px;
 }
+.btn-historico{
+    background:#0ea5e9;
+    color:white;
+    padding:10px 15px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:bold;
+    margin-top:10px;
+}
+
+.btn-historico:hover{
+    background:#0284c7;
+}
 
 .btn-danger{ background:#ef4444; }
 .btn-success{ background:#22c55e; }
@@ -87,6 +103,7 @@ button{
 .btn-secondary{ background:#64748b; }
 
 .status-aprovado{ color:#22c55e; }
+.status-em_validacao { color:#38bdf8; }
 .status-bloqueado{ color:#ef4444; }
 .status-pendente{ color:#f59e0b; }
 .status-rejeitado{ color:#64748b; }
@@ -94,11 +111,35 @@ button{
 </style>
 </head>
 
+
+</div>
+
 <body>
 
 <header>
-<h1>Painel Administrativo - ValidaPlay</h1>
+  <h1>Painel Administrativo - ValidaPlay</h1>
+
+  <div style="margin-top:15px;">
+    <a href="missoes.html" style="
+      background:#38bdf8;
+      padding:10px 15px;
+      border-radius:6px;
+      color:#020617;
+      text-decoration:none;
+      font-weight:bold;
+    ">
+      Controle de Missões
+    </a>
+
+    <button class="btn-historico"
+      onclick="window.location.href='admin-historico.html'"
+      style="margin-left:10px;">
+      📂 Histórico de Apps
+    </button>
+
+  </div>
 </header>
+
 
 <div class="main">
 
@@ -124,13 +165,18 @@ import {
   getDoc,
   query, 
   orderBy,
+  where,  
   deleteDoc,
   doc,
-  updateDoc
+  updateDoc,
+  addDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 
+
+
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
 
 const firebaseConfig = {
   apiKey: "AIzaSyBp43RboeJ5eQildnFcTc7JtkHa0xvQdnM",
@@ -223,62 +269,60 @@ async function carregarSolicitacoes(){
     const lista = document.getElementById("listaSolicitacoes");
     lista.innerHTML = "";
 
-    const q = query(collection(db, "solicitacoes"), orderBy("criadoEm","desc"));
-    const snap = await getDocs(q);
+   const q = query(
+  collection(db,"solicitacoes"),
+  orderBy("criadoEm","desc")
+);
 
-    if(snap.empty){
-        lista.innerHTML = "Nenhuma solicitação encontrada.";
-        return;
-    }
+const snap = await getDocs(q);
 
-    snap.forEach(docSnap=>{
-        const s = docSnap.data();
-        const id = docSnap.id;
-        const status = s.status || "pendente";
+snap.forEach(docSnap=>{
+    const s = docSnap.data();
+    const id = docSnap.id;
 
-        const div = document.createElement("div");
-        div.className="card";
+    // 🔥 NÃO MOSTRAR ARQUIVADOS
+    if (s.arquivado === true) return;
 
-        div.innerHTML=`
-<div class="nome">${s.nomeApp || "App sem nome"}</div>
-<div class="info">Email: ${s.email || "-"}</div>
-<div class="info">Link: ${s.linkTeste || "-"}</div>
-<div class="info">Quantidade: ${s.quantidade || "-"}</div>
-<div class="info">Prazo: ${s.prazo || "-"}</div>
+    const status = s.status || "pendente";
 
-<div class="info">Status:
-  <strong class="status-${status}">
-    ${status}
-  </strong>
-</div>
+    const div = document.createElement("div");
+    div.className="card";
 
-<div style="margin-top:10px;">
-  ${status === "pendente" || status === "novo" ? `
+   div.innerHTML = `
+  <div class="nome">${s.nomeApp}</div>
 
-    <button class="btn-success" onclick="atualizarStatus('solicitacoes','${id}','aprovado')">Aprovar</button>
-    <button class="btn-secondary" onclick="atualizarStatus('solicitacoes','${id}','rejeitado')">Rejeitar</button>
-  ` : ''}
+  <div class="info">Email: ${s.email || "-"}</div>
+  <div class="info">Quantidade: ${s.quantidade || "-"}</div>
+  <div class="info">
+    Status:
+    <strong class="status-${status}">
+      ${status}
+    </strong>
+  </div>
 
-  ${status === "aprovado" ? `
-    <button class="btn-warning" onclick="atualizarStatus('solicitacoes','${id}','bloqueado')">Bloquear</button>
-  ` : ''}
+  <div style="margin-top:10px;">
 
-  ${status === "bloqueado" ? `
-    <button class="btn-success" onclick="atualizarStatus('solicitacoes','${id}','aprovado')">Reativar</button>
-  ` : ''}
+    ${!s.missoesCriadas ? `
+      <button class="btn-success" onclick="criarMissoes('${id}')">
+        Criar Missões
+      </button>
+    ` : ''}
 
-  <button class="btn-danger" onclick="excluirRegistro('solicitacoes','${id}')">Excluir</button>
-</div>
+    <button class="btn-secondary"
+      onclick="verDetalhes('${id}')">
+      Detalhes
+    </button>
 
-<div class="info" style="margin-top:10px;">
-<strong>Instruções:</strong>
-</div>
+    <button class="btn-danger"
+      onclick="excluirRegistro('solicitacoes','${id}')">
+      Excluir
+    </button>
 
-<pre>${s.instrucoes || "Nenhuma instrução informada"}</pre>
+  </div>
 `;
 
-        lista.appendChild(div);
-    });
+    lista.appendChild(div);
+});
 }
 
 /* 🟢 TESTADORES */
@@ -286,7 +330,11 @@ async function carregarTestadores(){
     const lista = document.getElementById("listaTestadores");
     lista.innerHTML = "";
 
-    const q = query(collection(db,"testadores"), orderBy("criadoEm","desc"));
+    const q = query(
+      collection(db,"testadores"),
+      orderBy("criadoEm","desc")
+    );
+
     const snap = await getDocs(q);
 
     if(snap.empty){
@@ -307,7 +355,25 @@ async function carregarTestadores(){
         div.innerHTML=`
 <div class="nome">${t.nome || "Sem nome"}</div>
 <div class="info">Email: ${t.email || "-"}</div>
-<div class="info">WhatsApp: ${t.whatsapp || "-"}</div>
+
+
+<div class="info">
+WhatsApp:
+<a target="_blank"
+href="https://wa.me/55${(t.whatsapp || '').replace(/\D/g,'')}?text=${encodeURIComponent(
+`Olá ${t.nome || ""}!
+
+Seu cadastro foi aprovado na ValidaPlay 🎉
+
+Em breve você receberá um novo teste.
+Fique atento ao seu email.
+
+Equipe ValidaPlay`
+)}">
+📱 ${t.whatsapp || "-"}
+</a>
+</div>
+
 <div class="info">Tipo de celular: ${t.tipoCelular || "-"}</div>
 <div class="info">Modelo: ${t.modelo || "-"}</div>
 <div class="info">Versão: ${t.versao || "-"}</div>
@@ -343,8 +409,116 @@ async function carregarTestadores(){
     });
 }
 
+async function criarMissoes(appId){
+
+  
+
+ try {
+
+  const appRef = doc(db,"solicitacoes",appId);
+  const appSnap = await getDoc(appRef);
+
+  if(!appSnap.exists()){
+    alert("Aplicativo não encontrado.");
+    return;
+  }
+
+  const quantidade = appSnap.data().quantidade || 12;
+
+  if(appSnap.data().missoesCriadas){
+    alert("Missões já foram criadas para este app.");
+    return;
+  }
+
+  const confirmar = confirm(`Criar ${quantidade} missões para este app?`);
+  if(!confirmar) return;
+
+  // 🔎 Buscar testadores aprovados
+  const testadoresSnap = await getDocs(
+    query(collection(db, "testadores"), orderBy("criadoEm","desc"))
+  );
+
+  const testadoresAprovados = testadoresSnap.docs
+    .filter(doc => doc.data().status === "aprovado");
+
+  // 🔎 Buscar missões ativas (somente em andamento)
+  const missoesSnap = await getDocs(
+    query(collection(db,"missoes"), where("status","==","em_andamento"))
+  );
+
+  const missoesAtivas = missoesSnap.docs;
+
+  // 🔢 Contar missões por testador
+  const contadorMissoes = {};
+
+  missoesAtivas.forEach(m => {
+    const tId = m.data().testadorId;
+    contadorMissoes[tId] = (contadorMissoes[tId] || 0) + 1;
+  });
+
+  // 🎯 Ordenar por quem tem menos missões
+  const ordenados = testadoresAprovados.sort((a,b) => {
+    const aCount = contadorMissoes[a.id] || 0;
+    const bCount = contadorMissoes[b.id] || 0;
+    return aCount - bCount;
+  });
+
+  // 🎯 Selecionar respeitando limite máximo de 3 missões simultâneas
+  const selecionados = [];
+
+  for(const t of ordenados){
+    const totalAtivas = contadorMissoes[t.id] || 0;
+
+    if(totalAtivas < 3){
+      selecionados.push(t);
+    }
+
+    if(selecionados.length === quantidade) break;
+  }
+
+  if(selecionados.length < quantidade){
+    alert("Não há testadores suficientes disponíveis.");
+    return;
+  }
+
+  // 🚀 Criar missões
+  for(const testadorDoc of selecionados){
+
+    await addDoc(collection(db,"missoes"),{
+      appId: appId,
+      testadorId: testadorDoc.id,
+      status: "em_andamento",
+      diaAtual: 1,
+      totalDias: 14,
+      dataInicio: new Date(),
+      dataFim: new Date(Date.now() + 14*24*60*60*1000),
+      criadoEm: new Date()
+    });
+
+  }
+
+  await updateDoc(doc(db,"solicitacoes",appId),{
+    missoesCriadas: true,
+    dataInicioValidacao: new Date()
+  });
+
+  alert("Missões criadas com sucesso!");
+  carregarSolicitacoes();
+
+} catch(error){
+  console.error(error);
+  alert("Erro ao criar missões.");
+}
+
+}
+window.criarMissoes = criarMissoes;
+
+window.verDetalhes = function(id){
+  window.location.href = "admin-detalhes.html?id=" + id;
+}
 </script>
 
 
 </body>
 </html>
+

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Painel do Desenvolvedor - ValidaPlay</title>
+
+<style>
+body{
+    margin:0;
+    font-family:Arial;
+    background:#0f172a;
+    color:white;
+    padding:20px;
+}
+
+header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:30px;
+}
+
+h1{
+    color:#38bdf8;
+}
+
+button{
+    padding:8px 14px;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+.btn-sair{
+    background:#ef4444;
+    color:white;
+}
+
+.card{
+    background:#020617;
+    border:1px solid #1e293b;
+    border-radius:10px;
+    padding:15px;
+    margin-bottom:15px;
+}
+
+.info{
+    color:#cbd5e1;
+    margin-top:6px;
+}
+
+.status{
+    font-weight:bold;
+}
+
+.status-novo{ color:#f59e0b; }
+.status-aprovado{ color:#22c55e; }
+.status-em_validacao{ color:#38bdf8; }
+.status-rejeitado{ color:#64748b; }
+.status-bloqueado{ color:#ef4444; }
+
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>Meu Painel</h1>
+    <button class="btn-sair" id="sair">Sair</button>
+</header>
+
+<div id="listaApps">
+Carregando seus aplicativos...
+</div>
+
+<script type="module">
+
+import { auth, db } from "./firebase.js";
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const lista = document.getElementById("listaApps");
+const btnSair = document.getElementById("sair");
+
+btnSair.addEventListener("click", async () => {
+    await signOut(auth);
+    window.location.href = "login-desenvolvedor.html";
+});
+
+onAuthStateChanged(auth, async (user) => {
+
+    if(!user){
+        window.location.href = "login-desenvolvedor.html";
+        return;
+    }
+
+    const q = query(
+        collection(db,"solicitacoes"),
+        where("desenvolvedorId","==", user.uid)
+    );
+
+    const snap = await getDocs(q);
+
+    if(snap.empty){
+        lista.innerHTML = "Você ainda não enviou nenhum aplicativo.";
+        return;
+    }
+
+    lista.innerHTML = "";
+
+    snap.forEach(docSnap => {
+
+        const s = docSnap.data();
+        const status = s.status || "novo";
+
+        const div = document.createElement("div");
+        div.className = "card";
+
+        div.innerHTML = `
+            <div class="info"><strong>Aplicativo:</strong> ${s.nomeApp}</div>
+            <div class="info"><strong>Status:</strong> 
+                <span class="status status-${status}">
+                    ${status}
+                </span>
+            </div>
+            <div class="info"><strong>Testadores solicitados:</strong> ${s.quantidade}</div>
+            <div class="info"><strong>Prazo:</strong> ${s.prazo}</div>
+        `;
+
+        lista.appendChild(div);
+    });
+
+});
+
+</script>
+
+</body>
+</html>

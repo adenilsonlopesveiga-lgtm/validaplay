@@ -1,286 +1,300 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>ValidaPlay | Teste Fechado Google Play com 12 Testadores Reais</title>
+<title>ValidaPlay | Teste Fechado Google Play</title>
 
-<meta name="description" content="ValidaPlay conecta desenvolvedores a testadores reais para cumprir o requisito de 12 testadores por 14 dias no teste fechado da Google Play. Aprovação rápida, segura e profissional.">
-
-<meta name="robots" content="index, follow">
-
-<meta property="og:title" content="ValidaPlay - Teste Fechado Google Play">
-<meta property="og:description" content="Precisa cumprir o teste fechado da Play Store? A ValidaPlay conecta você a testadores reais profissionais.">
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://validaplay.com.br">
-<meta property="og:locale" content="pt_BR">
-
-<meta name="author" content="ValidaPlay">
-
-<meta name="google-site-verification" content="CQmjnplSfhL25P8VE6pmQL4scObAjKMMUW6N0SWrY2M" />
+<meta name="description" content="ValidaPlay conecta desenvolvedores a testadores reais para cumprir o requisito de 12 testadores por 14 dias no teste fechado da Google Play.">
 
 <style>
+
 body{
     margin:0;
-    font-family:Arial, Helvetica, sans-serif;
-    background:#0f172a;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: radial-gradient(circle at center, #13294b, #0a1323);
+
     color:white;
 }
 
+/* HEADER COM FAIXA GRANDE */
+
 header{
-    background:#020617;
-    padding:20px;
+    background: linear-gradient(90deg,#0f172a,#111c33);
+    padding:80px 20px;
     text-align:center;
-    border-bottom:1px solid #1e293b;
+    border-bottom:1px solid rgba(255,255,255,0.05);
 }
 
-header h1{
-    margin:0;
-    font-size:32px;
-    color:#38bdf8;
-}
-
-.container{
-    max-width:1000px;
-    margin:auto;
-    padding:40px 20px;
+.top-banner{
+    width:100%;
+    padding:70px 20px;
     text-align:center;
+    background: linear-gradient(90deg,#0f172a,#0c1a30,#0f172a);
+    border-bottom:1px solid rgba(255,255,255,0.05);
 }
 
-.hero{
-    margin-top:20px;
+.logo-grande{
+    max-width:600px;
+    width:90%;
 }
 
-.hero h2{
-    font-size:28px;
-    margin-bottom:10px;
-}
 
-.hero p{
-    color:#cbd5e1;
-    font-size:18px;
-}
+/* CARDS */
 
 .cards{
     display:flex;
-    gap:30px;
-    margin-top:50px;
+    gap:40px;
+    margin:80px auto;
     flex-wrap:wrap;
     justify-content:center;
+    max-width:1000px;
+    padding:0 20px;
 }
 
 .card{
-    background:#020617;
-    border:1px solid #1e293b;
-    border-radius:12px;
-    padding:30px;
-    width:320px;
-    transition:0.2s;
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(12px);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:18px;
+    padding:35px;
+    width:330px;
+    transition:0.3s;
 }
 
 .card:hover{
-    transform:scale(1.03);
+    transform:translateY(-8px);
     border-color:#38bdf8;
+    box-shadow:0 0 35px rgba(56,189,248,0.2);
 }
 
 .card h3{
-    color:#38bdf8;
-    font-size:24px;
+    font-size:22px;
+    margin-bottom:15px;
 }
 
 .card p{
     color:#cbd5e1;
+    margin-bottom:25px;
 }
 
-.btn{
-    display:inline-block;
-    margin-top:20px;
-    padding:12px 22px;
-    background:#38bdf8;
+/* BOTÕES */
+
+.btn-dev{
+    background: linear-gradient(90deg,#38bdf8,#0ea5e9);
     color:#020617;
+    padding:14px 24px;
+    border-radius:10px;
     text-decoration:none;
     font-weight:bold;
-    border-radius:8px;
 }
+
+.btn-test{
+    background: linear-gradient(90deg,#22c55e,#16a34a);
+    color:#020617;
+    padding:14px 24px;
+    border-radius:10px;
+    text-decoration:none;
+    font-weight:bold;
+}
+
+/* HERO INSTITUCIONAL */
+
+.hero{
+    text-align:center;
+    max-width:900px;
+    margin:60px auto;
+    padding:0 20px;
+}
+
+.hero h2{
+    font-size:34px;
+}
+
+.hero p{
+    color:#94a3b8;
+    font-size:18px;
+    margin-top:15px;
+}
+
+.btn-main{
+    display:inline-block;
+    margin-top:30px;
+    padding:16px 30px;
+    background: linear-gradient(90deg,#38bdf8,#22d3ee);
+    color:#020617;
+    border-radius:12px;
+    font-weight:bold;
+    text-decoration:none;
+}
+
+
+
+/* FOOTER */
 
 footer{
-    margin-top:60px;
-    padding:20px;
+    margin-top:100px;
+    padding:40px;
     text-align:center;
-    color:#94a3b8;
-    border-top:1px solid #1e293b;
+    color:#64748b;
+    border-top:1px solid rgba(255,255,255,0.05);
 }
-</style>
 
+.footer-contato{
+    margin-top:18px;
+    font-size:13px;
+    opacity:0.75;
+}
+
+.footer-contato a{
+    color:#9ca3af;
+    text-decoration:none;
+    margin:0 6px;
+    transition:0.2s;
+}
+
+.footer-contato a:hover{
+    color:#38bdf8;
+}
+
+.footer-contato span{
+    color:#6b7280;
+}
+
+</style>
 </head>
 
 <body>
 
-<header>
-    <h1>ValidaPlay - Teste Fechado Google Play com 12 Testadores Reais</h1>
-
-    <h2>Plataforma brasileira para validar aplicativos</h2>
-
-    <p>
-    O ValidaPlay conecta desenvolvedores que precisam validar seus aplicativos Android e iOS
-    com testadores reais comprometidos. Aqui você pode testar aplicativos antes do lançamento,
-    ajudar empresas a cumprir os requisitos da Google Play Store e receber recompensas
-    por participar dos testes.
-    </p>
-
-    <p>
-    A Google Play exige atualmente <strong>12 testadores ativos por 14 dias consecutivos</strong>
-    no teste fechado. Muitos desenvolvedores são reprovados porque utilizam amigos ou testadores
-    sem comprometimento real.
-    </p>
-
-    <p>
-    Saiba exatamente como cumprir corretamente o requisito acessando nossa página completa sobre
-    <a href="teste-fechado-google-play.html" style="color:#38bdf8; font-weight:bold;">
-    Teste Fechado Google Play
-    </a>.
-    </p>
-
-    <p>Plataforma brasileira profissional de validação de aplicativos</p>
+<header class="top-banner">
+    <img src="logo.png" alt="ValidaPlay" class="logo-grande">
 </header>
 
-<div class="container">
 
-    <div class="hero">
-        <h2>Teste aplicativos antes de lançar</h2>
-        <p>
-        Empresas encontram testadores reais comprometidos.<br>
-        Pessoas testam aplicativos e recebem recompensas.
-        </p>
+<div class="cards">
 
-        <a class="btn" href="teste-fechado-google-play.html">
-        Como cumprir o Teste Fechado da Google Play
-        </a>
-    </div>
+<div class="card">
+    <h3 style="color:#38bdf8;">Quero publicar meu aplicativo</h3>
+    <p>
+    Preciso cumprir o teste fechado exigido pela Google Play para liberar meu app.
+    </p>
 
-    <div class="cards">
+    <a href="empresa.html" class="btn-dev">
+    Sou desenvolvedor
+</a>
 
-        <div class="card">
-            <h3>Sou empresa</h3>
-            <p>
-            Envie seu aplicativo e receba testes reais, feedbacks, prints e validação
-            profissional para aprovação na Google Play.
-            </p>
-            <a class="btn" href="empresa.html">Quero validar meu app</a>
-        </div>
 
-        <div class="card">
-            <h3>Quero ser testador</h3>
-            <p>
-            Cadastre-se gratuitamente, receba convites para testar apps
-            e ganhe recompensas por cada teste concluído.
-            </p>
-            <a class="btn" href="como-funciona.html">Quero participar</a>
-        </div>
+    <br><br>
 
-    </div>
+    <a href="login-desenvolvedor.html" style="
+        display:inline-block;
+        padding:10px 18px;
+        background:#334155;
+        color:white;
+        border-radius:8px;
+        text-decoration:none;
+        font-weight:bold;
+    ">
+        Já sou desenvolvedor (Login)
+    </a>
+</div>
 
+
+<div class="card">
+    <h3 style="color:#22c55e;">Quero testar aplicativos</h3>
+    <p>
+    Quero participar dos testes e receber pagamento por cada aplicativo finalizado.
+    </p>
+   <div style="display:flex; flex-direction:column; gap:12px;">
+
+  <a href="cadastro-testador.html" class="btn-test">
+  Criar conta de testador
+  </a>
+
+  <a href="login-testador.html" style="
+      background:rgba(255,255,255,0.08);
+      padding:12px 24px;
+      border-radius:10px;
+      text-decoration:none;
+      font-weight:bold;
+      color:white;
+      text-align:center;
+  ">
+  Já sou testador (Login)
+  </a>
+
+</div>
+
+    </a>
+</div>
+
+</div>
+
+<div class="hero">
+    <h2>Publique seu aplicativo na Google Play sem reprovação</h2>
+    <p>
+    Cumprimos o requisito oficial de 12 testadores por 14 dias.
+    Processo rápido, organizado e profissional.
+    </p>
+
+    <a href="teste-fechado-google-play.html" class="btn-main">
+    Entender como funciona
+    </a>
 </div>
 
 <footer>
 © 2026 ValidaPlay • Plataforma de Testes de Aplicativos
 <br><br>
-
-<a href="teste-fechado-google-play.html" style="color:#94a3b8; text-decoration:none;">
 Teste Fechado Google Play
-</a>
-
 <br><br>
-
-<a href="login.html" style="color:#334155; font-size:12px; text-decoration:none;">
+<a href="login.html" style="color:#334155; text-decoration:none;">
 Área administrativa
 </a>
 </footer>
-<!-- ================= FORMULÁRIO ================= -->
 
-<section style="margin-top:60px; text-align:center;">
-    <h2>Quero receber informações</h2>
+<!-- BOTÃO WHATSAPP -->
+<a href="https://wa.me/5567991295346?text=Olá!%20Vim%20pelo%20site%20ValidaPlay%20e%20quero%20informações."
+   class="whatsapp-float"
+   target="_blank">
+    💬
+</a>
 
-    <form id="formLead" style="margin-top:20px;">
-        <input type="text" id="nome" placeholder="Seu nome" required
-        style="padding:10px; margin:5px; width:250px;">
+<style>
+.whatsapp-float{
+    position:fixed;
+    width:60px;
+    height:60px;
+    bottom:25px;
+    right:25px;
+    background:#25D366;
+    color:white;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:30px;
+    text-decoration:none;
+    box-shadow:0 4px 12px rgba(0,0,0,0.4);
+    z-index:9999;
+    transition:0.2s;
+}
 
-        <input type="email" id="email" placeholder="Seu email" required
-        style="padding:10px; margin:5px; width:250px;">
+.whatsapp-float:hover{
+    transform:scale(1.1);
+}
+</style>
+<div class="footer-contato">
+  <a href="mailto:suporte@validaplay.com.br">Suporte</a>
+  <span>·</span>
+  <a href="mailto:financeiro@validaplay.com.br">Financeiro</a>
+  <span>·</span>
+  <a href="mailto:contato@validaplay.com.br">Contato</a>
+  <span>·</span>
+  <a href="https://wa.me/5567991295346" target="_blank">WhatsApp</a>
+</div>
 
-        <button type="submit"
-        style="padding:10px 20px; background:#38bdf8; border:none; border-radius:6px;">
-        Enviar
-        </button>
-    </form>
-
-    <p id="mensagem" style="margin-top:15px;"></p>
-</section>
-
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc, serverTimestamp }
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyBp43RboeJ5eQildnFcTc7JtkHa0xvQdnM",
-  authDomain: "validaplay.firebaseapp.com",
-  projectId: "validaplay",
-  storageBucket: "validaplay.firebasestorage.app",
-  messagingSenderId: "731420070879",
-  appId: "1:731420070879:web:2b7a466b362211d8256a6a"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-const form = document.getElementById("formLead");
-const mensagem = document.getElementById("mensagem");
-
-form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    const nome = document.getElementById("nome").value.trim();
-    const email = document.getElementById("email").value.trim();
-
-    if(!nome || !email){
-        mensagem.innerText = "Preencha todos os campos.";
-        return;
-    }
-
-    try{
-
-        mensagem.innerText = "Enviando...";
-
-        // 🔹 Salva no Firestore
-        await addDoc(collection(db, "leads"), {
-            nome,
-            email,
-            criadoEm: serverTimestamp()
-        });
-
-        // 🔹 Chama sua Cloud Function para enviar email
-        await fetch("https://us-central1-validaplay.cloudfunctions.net/enviarEmail", {
-
-            method:"POST",
-            headers:{
-                "Content-Type":"application/json"
-            },
-            body: JSON.stringify({ nome, email })
-        });
-
-        mensagem.innerText = "Cadastro realizado com sucesso!";
-        form.reset();
-
-    }catch(error){
-        console.error(error);
-        mensagem.innerText = "Erro ao enviar. Tente novamente.";
-    }
-});
-</script>
 
 </body>
 </html>

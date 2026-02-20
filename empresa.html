@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
@@ -58,8 +57,15 @@ button{
     font-weight:bold;
     cursor:pointer;
 }
-</style>
 
+.link-login{
+    display:block;
+    text-align:center;
+    margin-top:20px;
+    color:#38bdf8;
+    text-decoration:none;
+}
+</style>
 </head>
 
 <body>
@@ -68,51 +74,62 @@ button{
 
 <h1>Enviar aplicativo para teste</h1>
 
-<label>Nome do aplicativo</label> <input type="text" id="app">
+<label>Nome do aplicativo</label>
+<input type="text" id="app">
 
-<label>Seu email</label> <input type="email" id="email">
+<label>Seu email</label>
+<input type="email" id="email">
 
-<label>Link do teste fechado (Google Play)</label> <input type="text" id="link">
+<label>Senha</label>
+<input type="password" id="senha" placeholder="Mínimo 6 caracteres">
 
-<label>Quantidade de testadores desejada</label> <select id="quantidade">
+<label>Seu telefone / WhatsApp</label>
+<input type="text" id="whatsapp" placeholder="(DDD) 99999-9999">
 
-<option>12</option>
-<option>15</option>
-<option>20</option>
-<option>30</option>
-<option>50</option>
+<label>Link do grupo de testadores (Google Groups)</label>
+<input type="text" id="grupo" placeholder="https://groups.google.com/g/seuapp">
+
+<label>Link para tornar-se testador</label>
+<input type="text" id="linkTeste" placeholder="https://play.google.com/apps/testing/com.seuapp">
+
+<label>Link do aplicativo na Play Store (opcional)</label>
+<input type="text" id="linkLoja" placeholder="https://play.google.com/store/apps/details?id=com.seuapp">
+
+<label>Quantidade de testadores desejada</label>
+<select id="quantidade"></select>
+
+<<label>Prazo do teste</label>
+<select id="prazo">
+  <option>14 dias</option>
 </select>
 
-<label>Prazo do teste</label> <select id="prazo">
-
-<option>14 dias</option>
-<option>7 dias</option>
-<option>3 dias</option>
-</select>
 
 <label>Instruções para os testadores (login, senha, como usar)</label>
-
 <textarea id="instrucoes"></textarea>
 
 <button id="enviar">Enviar solicitação</button>
 
+<a href="login-desenvolvedor.html" class="link-login">
+Já sou desenvolvedor (Login)
+</a>
+
 </div>
+
 <script type="module">
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { db, auth } from "./firebase.js";
+import { collection, addDoc, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBp43RboeJ5eQildnFcTc7JtkHa0xvQdnM",
-  authDomain: "validaplay.firebaseapp.com",
-  projectId: "validaplay",
-  storageBucket: "validaplay.firebasestorage.app",
-  messagingSenderId: "731420070879",
-  appId: "1:731420070879:web:2b7a466b362211d8256a6a"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+/* 🔢 GERAR OPÇÕES 1 A 50 AUTOMATICAMENTE */
+const selectQuantidade = document.getElementById("quantidade");
+for(let i=1;i<=50;i++){
+  const option = document.createElement("option");
+  option.value = i;
+  option.textContent = i + " testador" + (i>1?"es":"");
+  if(i === 12) option.selected = true; // padrão 12
+  selectQuantidade.appendChild(option);
+}
 
 const botao = document.getElementById("enviar");
 
@@ -120,65 +137,85 @@ botao.addEventListener("click", async () => {
 
   const nomeApp = document.getElementById("app").value.trim();
   const email = document.getElementById("email").value.trim();
-  const linkTeste = document.getElementById("link").value.trim();
-  const quantidade = document.getElementById("quantidade").value;
+  const senha = document.getElementById("senha").value.trim();
+  const grupo = document.getElementById("grupo").value.trim();
+  const linkTeste = document.getElementById("linkTeste").value.trim();
+  const whatsapp = document.getElementById("whatsapp").value.trim();
+  const linkLoja = document.getElementById("linkLoja").value.trim();
+  const quantidade = Number(document.getElementById("quantidade").value);
   const prazo = document.getElementById("prazo").value;
   const instrucoes = document.getElementById("instrucoes").value.trim();
 
-  if(!nomeApp || !email || !linkTeste){
-    alert("Preencha nome do app, email e link do teste.");
+  if(!nomeApp || !email || !senha || !linkTeste){
+    alert("Preencha nome do app, email, senha e link do teste.");
+    return;
+  }
+
+  if(senha.length < 6){
+    alert("A senha deve ter pelo menos 6 caracteres.");
     return;
   }
 
   try {
 
     botao.disabled = true;
-    botao.innerText = "Enviando...";
+    botao.innerText = "Criando conta e enviando...";
 
-    await addDoc(collection(db, "solicitacoes"), {
-      nomeApp,
+    /* 🔐 1 — Criar conta no Auth */
+    const userCredential = await createUserWithEmailAndPassword(auth, email, senha);
+    const user = userCredential.user;
+
+    /* 💾 2 — Salvar desenvolvedor */
+    await setDoc(doc(db, "desenvolvedores", user.uid), {
       email,
-      linkTeste,
-      quantidade: Number(quantidade),
-      prazo,
-      instrucoes,
-      status: "pendente",
-      grupoGoogle: "",
+      whatsapp,
       criadoEm: new Date()
     });
 
-    // 🔵 Mensagem visual
-    const msg = document.createElement("div");
-    msg.innerHTML = "✅ Solicitação enviada com sucesso! Redirecionando...";
-    msg.style.marginTop = "20px";
-    msg.style.padding = "15px";
-    msg.style.background = "#16a34a";
-    msg.style.borderRadius = "8px";
-    msg.style.textAlign = "center";
-    msg.style.fontWeight = "bold";
+    /* 📦 3 — Salvar solicitação vinculada */
+    await addDoc(collection(db, "solicitacoes"), {
+      desenvolvedorId: user.uid,
+      nomeApp,
+      email,
+      whatsapp,
+      grupo,
+      linkTeste,
+      linkLoja,
+      quantidade,
+      prazo,
+      instrucoes,
+      status: "novo",
+      criadoEm: new Date()
+    });
 
-    document.querySelector(".container").appendChild(msg);
+    document.querySelector(".container").innerHTML = `
+      <h1>Aplicativo enviado com sucesso 🚀</h1>
+      <p>Você já pode acompanhar o status no seu painel.</p>
+      <a href="login-desenvolvedor.html" style="
+          display:inline-block;
+          margin-top:20px;
+          padding:12px 20px;
+          background:#38bdf8;
+          color:#020617;
+          border-radius:8px;
+          text-decoration:none;
+          font-weight:bold;
+      ">
+          Ir para login
+      </a>
+    `;
 
-    botao.innerText = "Enviado";
+  } catch (error) {
 
-    // 🔄 Redireciona após 2 segundos
-    setTimeout(() => {
-      window.location.href = "index.html";
-    }, 2000);
-
-} catch (error) {
-
-    console.error("ERRO FIREBASE:", error);
-    alert(error.message);
+    console.error(error);
+    alert("Erro ao criar conta. Verifique se o email já está em uso.");
 
     botao.disabled = false;
     botao.innerText = "Enviar solicitação";
+  }
 
-}
-
-});   // 🔥 FECHA O addEventListener
-
+});
 </script>
 
-
-
+</body>
+</html>

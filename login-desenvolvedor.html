@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Login Desenvolvedor - ValidaPlay</title>
+
+<style>
+body{
+    margin:0;
+    font-family:Arial;
+    background:#0f172a;
+    color:white;
+}
+
+.container{
+    max-width:400px;
+    margin:80px auto;
+    background:#020617;
+    padding:30px;
+    border-radius:12px;
+    border:1px solid #1e293b;
+}
+
+h1{
+    text-align:center;
+    color:#38bdf8;
+    margin-bottom:25px;
+}
+
+label{
+    display:block;
+    margin-top:15px;
+    margin-bottom:5px;
+}
+
+input{
+    width:100%;
+    padding:12px;
+    border-radius:6px;
+    border:none;
+    background:#020617;
+    border:1px solid #334155;
+    color:white;
+}
+
+button{
+    margin-top:25px;
+    width:100%;
+    padding:14px;
+    background:#38bdf8;
+    border:none;
+    border-radius:8px;
+    font-size:16px;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+button:disabled{
+    opacity:0.6;
+    cursor:not-allowed;
+}
+
+.link{
+    margin-top:15px;
+    text-align:center;
+}
+
+.link a{
+    color:#38bdf8;
+    text-decoration:none;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>Login Desenvolvedor</h1>
+
+<label>Email</label>
+<input type="email" id="email">
+
+<label>Senha</label>
+<input type="password" id="senha">
+
+<button id="entrar">Entrar</button>
+
+<div class="link">
+<a href="empresa.html">Ainda não tenho conta</a>
+</div>
+
+</div>
+
+<script type="module">
+
+import { auth, db } from "./firebase.js";
+import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const btn = document.getElementById("entrar");
+
+btn.addEventListener("click", async () => {
+
+    const email = document.getElementById("email").value.trim();
+    const senha = document.getElementById("senha").value.trim();
+
+    if(!email || !senha){
+        alert("Preencha email e senha.");
+        return;
+    }
+
+    try {
+
+        btn.disabled = true;
+        btn.innerText = "Entrando...";
+
+        const userCredential = await signInWithEmailAndPassword(auth, email, senha);
+        const user = userCredential.user;
+
+        // 🔎 Verificar se é desenvolvedor
+        const devSnap = await getDoc(doc(db,"desenvolvedores", user.uid));
+
+        if(!devSnap.exists()){
+            alert("Conta não encontrada como desenvolvedor.");
+            btn.disabled = false;
+            btn.innerText = "Entrar";
+            return;
+        }
+
+        // ✅ Login válido
+        window.location.href = "painel-desenvolvedor.html";
+
+    } catch(error){
+
+        console.error(error);
+        alert("Email ou senha incorretos.");
+
+        btn.disabled = false;
+        btn.innerText = "Entrar";
+    }
+
+});
+
+</script>
+
+</body>
+</html>

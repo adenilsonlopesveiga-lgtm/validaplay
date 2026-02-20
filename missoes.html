@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Controle de Missões - ValidaPlay</title>
+
+<style>
+body{
+  margin:0;
+  font-family:Arial;
+  background:#0f172a;
+  color:white;
+  padding:20px;
+}
+
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:20px;
+}
+
+h1{
+  color:#38bdf8;
+  margin:0;
+}
+
+button{
+  background:#ef4444;
+  border:none;
+  padding:10px 15px;
+  border-radius:6px;
+  color:white;
+  cursor:pointer;
+  font-weight:bold;
+}
+
+.card{
+  background:#020617;
+  border:1px solid #1e293b;
+  border-radius:10px;
+  padding:15px;
+  margin-bottom:15px;
+}
+
+.card.atrasado{
+  border:1px solid #ef4444;
+  box-shadow:0 0 10px rgba(239,68,68,0.4);
+}
+
+.info{
+  color:#cbd5e1;
+  margin-top:5px;
+}
+
+select{
+  padding:8px;
+  border-radius:6px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <h1>Controle de Missões</h1>
+  <button id="btnLogout">Sair</button>
+</div>
+
+<div style="display:flex; gap:15px; margin-bottom:20px; flex-wrap:wrap;">
+  <select id="filtroApp">
+    <option value="todos">Todos os Apps</option>
+  </select>
+
+  <select id="filtroStatus">
+    <option value="todos">Todos Status</option>
+    <option value="concluida">Concluídas</option>
+    <option value="atrasado">Atrasadas</option>
+    <option value="hoje">Confirmou Hoje</option>
+    <option value="nunca">Nunca Confirmou</option>
+  </select>
+</div>
+
+<div id="dashboard" style="
+  display:flex;
+  gap:20px;
+  margin-bottom:25px;
+  flex-wrap:wrap;
+"></div>
+
+<div id="listaMissoes">
+Carregando...
+</div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { 
+  getFirestore,
+  collection,
+  getDocs,
+  doc,
+  getDoc
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { 
+  getAuth,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBp43RboeJ5eQildnFcTc7JtkHa0xvQdnM",
+  authDomain: "validaplay.firebaseapp.com",
+  projectId: "validaplay",
+  storageBucket: "validaplay.firebasestorage.app",
+  messagingSenderId: "731420070879",
+  appId: "1:731420070879:web:2b7a466b362211d8256a6a"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+document.getElementById("btnLogout").addEventListener("click", async ()=>{
+  await signOut(auth);
+  window.location.href = "login.html";
+});
+
+onAuthStateChanged(auth, async (user)=>{
+
+  if(!user){
+    window.location.href = "login.html";
+    return;
+  }
+
+  // 🔐 VERIFICA ADMIN
+  const userRef = doc(db,"usuarios",user.uid);
+  const userSnap = await getDoc(userRef);
+
+  if(!userSnap.exists() || userSnap.data().tipo !== "admin"){
+    alert("Acesso restrito ao administrador.");
+    await signOut(auth);
+    window.location.href = "login.html";
+    return;
+  }
+
+  carregarMissoes();
+});
+
+async function carregarMissoes(){
+
+  const lista = document.getElementById("listaMissoes");
+  const filtroApp = document.getElementById("filtroApp").value;
+  const filtroStatus = document.getElementById("filtroStatus").value;
+
+  lista.innerHTML = "";
+
+  const snap = await getDocs(collection(db,"missoes"));
+
+  if(snap.empty){
+    lista.innerHTML = "Nenhuma missão encontrada.";
+    return;
+  }
+
+  const appsUnicos = new Set();
+  const missoesProcessadas = [];
+
+  let totalMissoes = 0;
+  let totalConcluidas = 0;
+  let totalAndamento = 0;
+  let totalAtrasadas = 0;
+
+  for (const docSnap of snap.docs){
+
+    const m = docSnap.data();
+    const id = docSnap.id;
+
+    const appSnap = await getDoc(doc(db,"solicitacoes", m.appId));
+    const nomeApp = appSnap.exists() ? appSnap.data().nomeApp : "App não encontrado";
+
+    const testadorSnap = await getDoc(doc(db,"testadores", m.testadorId));
+    const nomeTestador = testadorSnap.exists() ? testadorSnap.data().nome : "Testador não encontrado";
+
+    const hoje = new Date();
+
+    const ultima = m.ultimaConfirmacao 
+      ? (m.ultimaConfirmacao.toDate ? m.ultimaConfirmacao.toDate() : new Date(m.ultimaConfirmacao))
+      : null;
+
+    let statusVisual = "";
+    let corStatus = "";
+    let prioridade = 2;
+
+    if(m.status === "concluida"){
+      statusVisual = "Concluída";
+      corStatus = "#22c55e";
+      prioridade = 3;
+      totalConcluidas++;
+    }
+    else if(!ultima){
+      statusVisual = "Nunca confirmou";
+      corStatus = "#ef4444";
+      prioridade = 1;
+      totalAndamento++;
+      totalAtrasadas++;
+    }
+    else{
+      const diffDias = Math.floor((hoje - ultima) / (1000*60*60*24));
+
+      if(diffDias === 0){
+        statusVisual = "Confirmou hoje";
+        corStatus = "#22c55e";
+        totalAndamento++;
+      }
+      else if(diffDias === 1){
+        statusVisual = "Confirmou ontem";
+        corStatus = "#f59e0b";
+        totalAndamento++;
+      }
+      else{
+        statusVisual = "ATRASADO";
+        corStatus = "#ef4444";
+        prioridade = 1;
+        totalAndamento++;
+        totalAtrasadas++;
+      }
+    }
+
+    totalMissoes++;
+    appsUnicos.add(nomeApp);
+
+    missoesProcessadas.push({
+      id,
+      nomeApp,
+      nomeTestador,
+      statusVisual,
+      corStatus,
+      prioridade,
+      m
+    });
+  }
+
+  // 🔥 Ordenar por prioridade (atrasadas primeiro)
+  missoesProcessadas.sort((a,b)=> a.prioridade - b.prioridade);
+
+  // Popular filtro
+  const selectApp = document.getElementById("filtroApp");
+  selectApp.innerHTML = '<option value="todos">Todos os Apps</option>';
+  appsUnicos.forEach(app=>{
+    selectApp.innerHTML += `<option value="${app}">${app}</option>`;
+  });
+
+  for(const item of missoesProcessadas){
+
+    if(filtroApp !== "todos" && item.nomeApp !== filtroApp) continue;
+
+    if(filtroStatus !== "todos"){
+      if(filtroStatus === "concluida" && item.statusVisual !== "Concluída") continue;
+      if(filtroStatus === "atrasado" && item.statusVisual !== "ATRASADO") continue;
+      if(filtroStatus === "hoje" && item.statusVisual !== "Confirmou hoje") continue;
+      if(filtroStatus === "nunca" && item.statusVisual !== "Nunca confirmou") continue;
+    }
+
+    const progresso = Math.floor((item.m.diaAtual / item.m.totalDias) * 100);
+
+    const div = document.createElement("div");
+    div.className = "card";
+
+    if(item.statusVisual === "ATRASADO"){
+      div.classList.add("atrasado");
+    }
+
+    div.innerHTML = `
+      <div class="info"><strong>App:</strong> ${item.nomeApp}</div>
+      <div class="info"><strong>Testador:</strong> ${item.nomeTestador}</div>
+      <div class="info">Dia Atual: ${item.m.diaAtual} / ${item.m.totalDias}</div>
+
+      <div style="margin-top:10px;">
+        <div style="background:#1e293b;border-radius:6px;height:10px;overflow:hidden;">
+          <div style="width:${progresso}%;background:#38bdf8;height:10px;"></div>
+        </div>
+        <div style="font-size:12px;margin-top:4px;">
+          ${progresso}% concluído
+        </div>
+      </div>
+
+      <div style="margin-top:6px;color:${item.corStatus};font-weight:bold;">
+        ${item.statusVisual}
+      </div>
+    `;
+
+    lista.appendChild(div);
+  }
+
+  document.getElementById("dashboard").innerHTML = `
+    <div class="card"><strong>Total:</strong> ${totalMissoes}</div>
+    <div class="card"><strong>Concluídas:</strong> ${totalConcluidas}</div>
+    <div class="card"><strong>Em andamento:</strong> ${totalAndamento}</div>
+    <div class="card"><strong>Atrasadas:</strong> ${totalAtrasadas}</div>
+  `;
+}
+
+document.getElementById("filtroApp").addEventListener("change", carregarMissoes);
+document.getElementById("filtroStatus").addEventListener("change", carregarMissoes);
+
+</script>
+
+</body>
+</html>

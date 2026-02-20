@@ -1,5 +1,19 @@
-import { db } from "./firebase.js";
-import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { db, auth } from "./firebase.js";
+
+import { 
+  collection,
+  doc,
+  setDoc,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+import {
+  createUserWithEmailAndPassword
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+
+
+
 
 const btn = document.getElementById("btnCadastrar");
 
@@ -7,19 +21,24 @@ btn.addEventListener("click", async () => {
 
     const nome = document.getElementById("nome").value.trim();
     const email = document.getElementById("email").value.trim();
+    const senha = document.getElementById("senha").value.trim();
     const whatsapp = document.getElementById("whatsapp").value.trim();
     const tipoCelular = document.getElementById("tipoCelular").value;
     const modelo = document.getElementById("modelo").value.trim();
     const versao = document.getElementById("versao").value.trim();
 
-    if (!nome || !email) {
-        alert("Preencha nome e email.");
+    if (!nome || !email || !senha) {
+        alert("Preencha nome, email e senha.");
         return;
     }
 
-    // 🔒 validação básica de email
     if (!email.includes("@")) {
         alert("Email inválido.");
+        return;
+    }
+
+    if (senha.length < 6) {
+        alert("A senha deve ter pelo menos 6 caracteres.");
         return;
     }
 
@@ -28,8 +47,12 @@ btn.addEventListener("click", async () => {
 
     try {
 
-        // 🔥 1. Salvar no Firestore
-        await addDoc(collection(db, "testadores"), {
+        // 🔐 1 — CRIAR CONTA NO AUTH
+        const userCredential = await createUserWithEmailAndPassword(auth, email, senha);
+        const user = userCredential.user;
+
+        // 🔥 2 — SALVAR PERFIL COM UID COMO ID
+        await setDoc(doc(db, "testadores", user.uid), {
             nome,
             email,
             whatsapp,
@@ -37,40 +60,46 @@ btn.addEventListener("click", async () => {
             modelo,
             versao,
             status: "pendente",
-
             criadoEm: serverTimestamp()
         });
 
-        // 📩 2. Enviar email via Cloud Function
-        const response = await fetch("https://us-central1-validaplay.cloudfunctions.net/enviarEmail", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                nome,
-                email,
-                whatsapp,
-                tipoCelular,
-                modelo,
-                versao
-            })
-        });
+        // 📩 3 — ENVIA EMAIL (mantido)
+        const resposta = await fetch(
+            "https://us-central1-validaplay.cloudfunctions.net/enviarEmail",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    nome,
+                    email,
+                    whatsapp,
+                    tipoCelular,
+                    modelo,
+                    versao
+                })
+            }
+        );
 
-        if (!response.ok) {
-            throw new Error("Erro ao enviar email");
+        const dados = await resposta.json();
+
+        if (!resposta.ok || !dados.success) {
+            throw new Error("Falha ao enviar email");
         }
 
-        // ✅ Redirecionar
+        // ✅ SUCESSO
         document.querySelector(".container").innerHTML = `
-  <h1>Cadastro realizado com sucesso 🎉</h1>
-  <p>Em breve entraremos em contato com você.</p>
-`;
-
+            <h1>Cadastro realizado com sucesso 🎉</h1>
+            <p>Aguarde aprovação do administrador para acessar o painel.</p>
+        `;
 
     } catch (error) {
-        console.error("Erro:", error);
-        alert("Erro ao cadastrar. Tente novamente.");
+
+        console.error("ERRO REAL:", error);
+
+        alert("Erro ao criar conta. Verifique se o email já não está em uso.");
+
         btn.disabled = false;
         btn.innerText = "Cadastrar";
     }

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Painel do Testador - ValidaPlay</title>
+
+
+
+<style>
+body{
+  margin:0;
+  font-family:Arial;
+  background:#0f172a;
+  color:white;
+  padding:20px;
+}
+
+h1{
+  color:#38bdf8;
+  margin-bottom:20px;
+}
+
+.card{
+  background:#020617;
+  border:1px solid #1e293b;
+  border-radius:10px;
+  padding:15px;
+  margin-bottom:15px;
+}
+
+.info{
+  color:#cbd5e1;
+  margin-top:5px;
+}
+
+
+.destaque{
+  color:#22c55e;
+  font-weight:bold;
+}
+</style>
+</head>
+
+<body>
+
+
+
+<div style="display:flex; justify-content:space-between; align-items:center;">
+  <h1 style="margin:0;">Minhas Missões</h1>
+
+  <button id="btnLogout" style="
+      background:#ef4444;
+      padding:10px 15px;
+      border:none;
+      border-radius:6px;
+      color:white;
+      cursor:pointer;
+      font-weight:bold;
+  ">
+    Sair
+  </button>
+</div>
+
+<div style="margin-bottom:20px;"></div>
+
+
+
+
+
+<div id="listaMissoes">
+Carregando...
+</div>
+
+<script type="module">
+
+import { initializeApp } 
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+import { 
+  getFirestore,
+  collection,
+  getDocs,
+  query,
+  where,
+  doc,
+  getDoc,
+  updateDoc,
+  serverTimestamp
+} 
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+import { 
+  getAuth,
+  onAuthStateChanged,
+  signOut
+} 
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBp43RboeJ5eQildnFcTc7JtkHa0xvQdnM",
+  authDomain: "validaplay.firebaseapp.com",
+  projectId: "validaplay",
+  storageBucket: "validaplay.firebasestorage.app",
+  messagingSenderId: "731420070879",
+  appId: "1:731420070879:web:2b7a466b362211d8256a6a"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+async function carregarMinhasMissoes(user){
+
+    
+  const lista = document.getElementById("listaMissoes");
+  lista.innerHTML = "";
+
+  // 🔎 Buscar documento do testador pelo UID
+  const testadorRef = doc(db,"testadores", user.uid);
+  const testadorSnap = await getDoc(testadorRef);
+
+  if(!testadorSnap.exists()){
+    lista.innerHTML = "Você não está cadastrado como testador.";
+    return;
+  }
+
+  // 🔎 Buscar missões do testador
+  const q = query(
+    collection(db,"missoes"),
+    where("testadorId","==", user.uid)
+  );
+
+  const snap = await getDocs(q);
+
+  if(snap.empty){
+    lista.innerHTML = "Nenhuma missão ativa.";
+    return;
+  }
+
+  for(const docSnap of snap.docs){
+
+    const m = docSnap.data();
+
+    const appSnap = await getDoc(doc(db,"solicitacoes", m.appId));
+    const nomeApp = appSnap.exists() ? appSnap.data().nomeApp : "App não encontrado";
+    const grupo = appSnap.exists() ? appSnap.data().grupo : "";
+const linkTeste = appSnap.exists() ? appSnap.data().linkTeste : "";
+const instrucoes = appSnap.exists() ? appSnap.data().instrucoes : "";
+
+
+    const hoje = new Date();
+    const fim = m.dataFim.toDate ? m.dataFim.toDate() : new Date(m.dataFim);
+    const diasRestantes = Math.ceil((fim - hoje) / (1000*60*60*24));
+
+    const div = document.createElement("div");
+    div.className = "card";
+
+    const ultima = m.ultimaConfirmacao 
+  ? (m.ultimaConfirmacao.toDate ? m.ultimaConfirmacao.toDate() : new Date(m.ultimaConfirmacao))
+  : null;
+
+let jaConfirmouHoje = false;
+
+if (ultima) {
+  const hoje = new Date();
+  jaConfirmouHoje =
+    ultima.getDate() === hoje.getDate() &&
+    ultima.getMonth() === hoje.getMonth() &&
+    ultima.getFullYear() === hoje.getFullYear();
+}
+
+
+   div.innerHTML = `
+  <div class="info"><strong>App:</strong> ${nomeApp}</div>
+  <div class="info">Dia Atual: ${m.diaAtual} / ${m.totalDias}</div>
+  <div class="info destaque">Dias restantes: ${diasRestantes > 0 ? diasRestantes : 0}</div>
+  <div class="info">Status: ${m.status}</div>
+
+  <div style="margin-top:15px; padding:10px; background:#0f172a; border-radius:6px;">
+    <strong>📋 Regras da Missão (ValidaPlay)</strong>
+    <ul style="margin-top:8px; padding-left:18px; color:#cbd5e1;">
+      <li>Instalar o aplicativo pelo link abaixo</li>
+      <li>Entrar no grupo de testadores</li>
+      <li>Manter o app instalado por ${m.totalDias} dias</li>
+      <li>Abrir o aplicativo diariamente</li>
+      <li>Confirmar atividade todos os dias</li>
+      <li>Não desinstalar antes do prazo</li>
+    </ul>
+  </div>
+
+  <div style="margin-top:15px; padding:10px; background:#0f172a; border-radius:6px;">
+    <strong>📌 Instruções do Desenvolvedor</strong>
+    <div class="info" style="margin-top:6px;">
+      <strong>Grupo:</strong> 
+      <a href="${grupo}" target="_blank" style="color:#38bdf8;">
+        ${grupo || "Não informado"}
+      </a>
+    </div>
+    <div class="info">
+      <strong>Link do Teste:</strong> 
+      <a href="${linkTeste}" target="_blank" style="color:#38bdf8;">
+        ${linkTeste || "Não informado"}
+      </a>
+    </div>
+    <div class="info" style="margin-top:6px;">
+      ${instrucoes || "Sem instruções adicionais."}
+    </div>
+  </div>
+
+  ${m.status === "em_andamento" ? `
+    ${jaConfirmouHoje ? `
+      <button style="
+          margin-top:15px;
+          padding:8px 12px;
+          background:#64748b;
+          border:none;
+          border-radius:6px;
+          color:white;
+          font-weight:bold;
+        " disabled>
+        Atividade já confirmada hoje
+      </button>
+    ` : `
+      <button onclick="confirmarDia('${docSnap.id}', ${m.diaAtual}, ${m.totalDias})"
+        style="
+          margin-top:15px;
+          padding:8px 12px;
+          background:#22c55e;
+          border:none;
+          border-radius:6px;
+          color:white;
+          cursor:pointer;
+          font-weight:bold;
+        ">
+        Confirmar atividade de hoje
+      </button>
+    `}
+  ` : ''}
+`;
+
+
+    lista.appendChild(div);
+  }
+}
+
+window.confirmarDia = async function(missaoId, diaAtual, totalDias){
+
+  try {
+
+    const novoDia = diaAtual + 1;
+
+    const dadosAtualizacao = {
+      diaAtual: novoDia,
+      ultimaConfirmacao: serverTimestamp()
+    };
+
+    if(novoDia >= totalDias){
+      dadosAtualizacao.status = "concluida";
+    }
+
+    // Atualiza missão
+    await updateDoc(doc(db,"missoes",missaoId), dadosAtualizacao);
+
+    // 🔥 BLOCO AUTOMÁTICO DE ARQUIVAMENTO
+    const missaoSnap = await getDoc(doc(db,"missoes",missaoId));
+    const appId = missaoSnap.data().appId;
+
+    const q = query(
+      collection(db,"missoes"),
+      where("appId","==", appId),
+      where("status","!=", "concluida")
+    );
+
+    const pendentes = await getDocs(q);
+
+    if(pendentes.empty){
+      await updateDoc(doc(db,"solicitacoes", appId),{
+        arquivado: true,
+        dataArquivado: serverTimestamp()
+      });
+    }
+
+    alert("Dia confirmado com sucesso!");
+    location.reload();
+
+  } catch(error){
+    console.error(error);
+    alert("Erro ao confirmar dia.");
+  }
+
+}
+
+onAuthStateChanged(auth, (user)=>{
+
+  if(!user){
+  window.location.href = "login-testador.html";
+  return;
+}
+
+
+  carregarMinhasMissoes(user);
+
+});
+
+
+
+const btnLogout = document.getElementById("btnLogout");
+
+btnLogout.addEventListener("click", async () => {
+  await signOut(auth);
+  window.location.href = "login-testador.html";
+});
+
+</script>
+
+</body>
+</html>
