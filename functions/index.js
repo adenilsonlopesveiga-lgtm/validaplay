@@ -3,17 +3,19 @@ const {onRequest} = require("firebase-functions/v2/https");
 const {onDocumentUpdated} = require("firebase-functions/v2/firestore");
 const {defineSecret} = require("firebase-functions/params");
 const {Resend} = require("resend");
+const admin = require("firebase-admin");
+
+admin.initializeApp();
+const db = admin.firestore();
 
 setGlobalOptions({maxInstances: 10});
 
 const resendApiKey = defineSecret("RESEND_API_KEY");
 
-// reutilização da conexão (MUITO importante em v2)
 let resend;
 
-
 // ==================================================
-// 1️⃣ CADASTRO VIA SITE (APENAS CONFIRMA RECEBIMENTO)
+// 1️⃣ ENVIO DE EMAIL VIA SITE
 // ==================================================
 exports.enviarEmail = onRequest(
     {
@@ -30,10 +32,6 @@ exports.enviarEmail = onRequest(
         const {
           email,
           nome,
-          whatsapp,
-          tipoCelular,
-          modelo,
-          versao,
           tipo,
           linkTeste,
           quantidade,
@@ -41,7 +39,6 @@ exports.enviarEmail = onRequest(
           instrucoes,
         } = req.body || {};
 
-        // 🛡️ proteção anti-bot
         if (!email || !nome || !email.includes("@")) {
           return res.status(400).send("Dados inválidos");
         }
@@ -50,82 +47,26 @@ exports.enviarEmail = onRequest(
           resend = new Resend(resendApiKey.value());
         }
 
-        // ==========================
-        // EMAIL PARA O USUÁRIO
-        // ==========================
         let assuntoUsuario = "";
         let mensagemUsuario = "";
 
         if (tipo === "empresa") {
           assuntoUsuario = "Solicitação recebida - ValidaPlay";
-
           mensagemUsuario = `
-<h2>Sua solicitação foi recebida com sucesso</h2>
-
-<p>Olá,</p>
-
-<p>
-Recebemos o cadastro do seu aplicativo <strong>${nome}</strong> na plataforma <strong>ValidaPlay</strong>.
-</p>
-
-<p>
-Nossa equipe irá analisar as informações enviadas e organizar os próximos passos para a validação.
-</p>
-
-<p><strong>O que acontece agora:</strong></p>
-
-<ul>
-  <li>Revisão dos dados enviados</li>
-  <li>Organização da base de testadores</li>
-  <li>Início do planejamento do período de teste</li>
-</ul>
-
-<p>
-Você receberá uma confirmação assim que o processo for aprovado.
-</p>
-
-<br>
-
-<p>
-Atenciosamente,<br>
-<strong>Equipe ValidaPlay</strong><br>
-Plataforma brasileira de validação de aplicativos
-</p>
+  <h2>Solicitação recebida</h2>
+  <p>App: <strong>${nome}</strong></p>
+  <p>Quantidade: ${quantidade || "-"}</p>
+  <p>Prazo: ${prazo || "-"}</p>
+  <p>Link de teste: ${linkTeste || "-"}</p>
+  <p>Instruções: ${instrucoes || "-"}</p>
 `;
         } else {
           assuntoUsuario = "Cadastro recebido 🎉";
-
           mensagemUsuario = `
-<h2>Cadastro confirmado 🎉</h2>
-
-<p>Olá ${nome},</p>
-
-<p>
-Seu cadastro como <strong>testador oficial da ValidaPlay</strong> foi recebido com sucesso.
-</p>
-
-<p><strong>Como funciona:</strong></p>
-
-<ul>
-  <li>Você receberá convites compatíveis com seu perfil</li>
-  <li>Os testes têm duração média de 14 dias</li>
-  <li>É necessário utilizar o aplicativo diariamente</li>
-</ul>
-
-<p>
-Após a conclusão correta do teste, o pagamento será realizado conforme combinado.
-</p>
-
-<p>
-Fique atento ao seu email e WhatsApp para não perder oportunidades.
-</p>
-
-<br>
-
-<p>
-<strong>Equipe ValidaPlay</strong>
-</p>
-`;
+          <h2>Cadastro confirmado 🎉</h2>
+          <p>Olá ${nome},</p>
+          <p>Seu cadastro foi recebido.</p>
+        `;
         }
 
         await resend.emails.send({
@@ -135,55 +76,16 @@ Fique atento ao seu email e WhatsApp para não perder oportunidades.
           html: mensagemUsuario,
         });
 
-        // ==========================
-        // EMAIL PARA ADMIN
-        // ==========================
-        let assuntoAdmin = "";
-        let mensagemAdmin = "";
-
-        if (tipo === "empresa") {
-          assuntoAdmin = "🚨 Novo cliente interessado - ValidaPlay";
-
-          mensagemAdmin = `
-<h2>Novo pedido de testes</h2>
-<p><strong>Aplicativo:</strong> ${nome}</p>
-<p><strong>Email:</strong> ${email}</p>
-<p><strong>Link:</strong> ${linkTeste || "-"}</p>
-<p><strong>Quantidade:</strong> ${quantidade || "-"}</p>
-<p><strong>Prazo:</strong> ${prazo || "-"}</p>
-<p><strong>Instruções:</strong> ${instrucoes || "-"}</p>
-`;
-        } else {
-          assuntoAdmin = "Novo testador cadastrado 🚀";
-
-          mensagemAdmin = `
-<p><strong>Nome:</strong> ${nome}</p>
-<p><strong>Email:</strong> ${email}</p>
-<p><strong>WhatsApp:</strong> ${whatsapp || "-"}</p>
-<p><strong>Celular:</strong> ${tipoCelular || "-"}</p>
-<p><strong>Modelo:</strong> ${modelo || "-"}</p>
-<p><strong>Versão:</strong> ${versao || "-"}</p>
-`;
-        }
-
-        await resend.emails.send({
-          from: "ValidaPlay <noreply@validaplay.com.br>",
-          to: "contato@validaplay.com.br",
-          subject: assuntoAdmin,
-          html: mensagemAdmin,
-        });
-
         return res.status(200).json({success: true});
       } catch (error) {
-        console.error("Erro enviarEmail:", error);
+        console.error(error);
         return res.status(500).json({error: "Erro ao enviar email"});
       }
     },
 );
 
-
 // ==================================================
-// 2️⃣ TESTADOR APROVADO (BLINDADO CONTRA DUPLICAÇÃO)
+// 2️⃣ TESTADOR APROVADO
 // ==================================================
 exports.onTestadorAprovado = onDocumentUpdated(
     {
@@ -191,21 +93,10 @@ exports.onTestadorAprovado = onDocumentUpdated(
       secrets: [resendApiKey],
     },
     async (event) => {
-      let before = null;
-      let after = null;
-
-      if (event.data.before) {
-        before = event.data.before.data();
-      }
-
-      if (event.data.after) {
-        after = event.data.after.data();
-      }
-
-
+      const before = event.data.before ? event.data.before.data() : null;
+      const after = event.data.after ? event.data.after.data() : null;
       if (!before || !after) return;
 
-      // 🔒 só dispara quando muda de pendente → aprovado
       if (before.status !== "pendente") return;
       if (after.status !== "aprovado") return;
 
@@ -216,40 +107,16 @@ exports.onTestadorAprovado = onDocumentUpdated(
       await resend.emails.send({
         from: "ValidaPlay <contato@validaplay.com.br>",
         to: after.email,
-        subject: "Você foi aprovado na ValidaPlay 🎉",
-        html: `
-<h2>Você foi aprovado na ValidaPlay 🎉</h2>
-
-<p>Olá ${after.nome},</p>
-
-<p>
-Seu cadastro foi aprovado com sucesso e você agora faz parte da nossa base oficial de testadores.
-</p>
-
-<p>
-Em breve você poderá receber convites para participar de validações reais de aplicativos.
-</p>
-
-<p>
-Fique atento às comunicações por email e WhatsApp.
-</p>
-
-<br>
-
-<p>
-Parabéns e seja bem-vindo(a)!<br>
-<strong>Equipe ValidaPlay</strong>
-</p>
-`,
+        subject: "Você foi aprovado 🎉",
+        html: `<h2>Cadastro aprovado</h2><p>Bem-vindo à ValidaPlay.</p>`,
       });
 
-      console.log("Email testador aprovado:", after.email);
+      console.log("Email enviado para testador aprovado.");
     },
 );
 
-
 // ==================================================
-// 3️⃣ CLIENTE APROVADO (BLINDADO)
+// 3️⃣ CLIENTE APROVADO → CRIA MISSÕES AUTOMÁTICAS
 // ==================================================
 exports.onClienteAprovado = onDocumentUpdated(
     {
@@ -257,21 +124,10 @@ exports.onClienteAprovado = onDocumentUpdated(
       secrets: [resendApiKey],
     },
     async (event) => {
-      let before = null;
-      let after = null;
-
-      if (event.data.before) {
-        before = event.data.before.data();
-      }
-
-      if (event.data.after) {
-        after = event.data.after.data();
-      }
-
-
+      const before = event.data.before ? event.data.before.data() : null;
+      const after = event.data.after ? event.data.after.data() : null;
       if (!before || !after) return;
 
-      // 🔒 evita disparos duplicados
       if (before.status !== "pendente") return;
       if (after.status !== "aprovado") return;
 
@@ -279,40 +135,178 @@ exports.onClienteAprovado = onDocumentUpdated(
         resend = new Resend(resendApiKey.value());
       }
 
-      await resend.emails.send({
-        from: "ValidaPlay <contato@validaplay.com.br>",
-        to: after.email || after.emailCliente,
-        subject: "Seu aplicativo foi aprovado na ValidaPlay 🚀",
-        html: `
-<h2>Seu aplicativo foi aprovado 🚀</h2>
+      const solicitacaoId = event.params.id;
 
-<p>Olá,</p>
+      // Buscar testadores aprovados
+      const testadoresSnap = await db
+          .collection("testadores")
+          .where("status", "==", "aprovado")
+          .limit(after.quantidade)
+          .get();
 
-<p>
-O aplicativo <strong>${after.nomeApp}</strong> foi aprovado na <strong>ValidaPlay</strong>.
-</p>
+      if (testadoresSnap.empty) {
+        console.log("Nenhum testador disponível.");
+        return;
+      }
 
-<p><strong>Próximos passos:</strong></p>
+      const batch = db.batch();
 
-<ul>
-  <li>Organização dos testadores</li>
-  <li>Início do período oficial de validação</li>
-  <li>Acompanhamento contínuo durante os 14 dias</li>
-</ul>
+      for (const docSnap of testadoresSnap.docs) {
+        const testador = docSnap.data();
+        const testadorId = docSnap.id;
 
-<p>
-Nossa equipe entrará em contato para alinhar os detalhes finais.
-</p>
+        const missaoRef = db.collection("missoes").doc();
 
-<br>
+        batch.set(missaoRef, {
+          solicitacaoId,
+          clienteId: after.clienteId,
+          testadorId,
+          nomeApp: after.nomeApp,
+          linkTeste: after.linkTeste,
+          totalDias: 14,
+          diaAtual: 1,
+          status: "em_andamento",
+          criadoEm: admin.firestore.FieldValue.serverTimestamp(),
+        });
 
-<p>
-Atenciosamente,<br>
-<strong>Equipe ValidaPlay</strong>
-</p>
-`,
-      });
+        // Criar 14 dias
+        for (let i = 1; i <= 14; i++) {
+          const diaRef = missaoRef.collection("dias").doc(String(i));
 
-      console.log("Email cliente aprovado:", after.email);
+          batch.set(diaRef, {
+            numero: i,
+            status: "pendente",
+            printUrl: "",
+            dataEnvio: null,
+            dataValidacao: null,
+          });
+        }
+
+        // Enviar email para testador
+        await resend.emails.send({
+          from: "ValidaPlay <contato@validaplay.com.br>",
+          to: testador.email,
+          subject: "Nova missão disponível 🚀",
+          html: `
+          <h2>Nova missão disponível</h2>
+          <p>App: <strong>${after.nomeApp}</strong></p>
+          <p>Link: ${after.linkTeste}</p>
+          <p>Duração: 14 dias</p>
+        `,
+        });
+      }
+
+      await batch.commit();
+
+      console.log("Missões criadas automaticamente.");
     },
 );
+// ==================================================
+// 4️⃣ EXCLUSÃO COMPLETA DE USUÁRIO (ADMIN ONLY)
+// ==================================================
+const {onCall} = require("firebase-functions/v2/https");
+
+exports.excluirUsuarioCompleto = onCall(
+    {
+      region: "us-central1",
+    },
+    async (request) => {
+      const {uid, colecao} = request.data;
+      const auth = request.auth;
+
+      if (!auth) {
+        throw new Error("Usuário não autenticado.");
+      }
+
+      const userDoc = await db.collection("usuarios").doc(auth.uid).get();
+
+      if (!userDoc.exists || userDoc.data().tipo !== "admin") {
+        throw new Error("Acesso negado.");
+      }
+
+      if (!uid || !colecao) {
+        throw new Error("Dados inválidos.");
+      }
+
+      // 🔥 Sempre excluir Firestore
+      await db.collection(colecao).doc(uid).delete();
+
+      // 🔥 Só excluir do Auth se for testador ou usuario
+      if (colecao === "testadores" || colecao === "usuarios") {
+        try {
+          await admin.auth().deleteUser(uid);
+        } catch (error) {
+          console.log("Usuário não existe no Auth ou já foi removido.");
+        }
+      }
+
+      return {sucesso: true};
+    },
+);
+exports.criarMissoesManual = onCall(async (request) => {
+  const {solicitacaoId} = request.data;
+  const auth = request.auth;
+
+  if (!auth) {
+    throw new Error("Usuário não autenticado.");
+  }
+
+  const userDoc = await db.collection("usuarios").doc(auth.uid).get();
+
+  if (!userDoc.exists || userDoc.data().tipo !== "admin") {
+    throw new Error("Acesso negado.");
+  }
+
+  const solicitacaoRef = db.collection("solicitacoes").doc(solicitacaoId);
+  const solicitacaoSnap = await solicitacaoRef.get();
+
+  if (!solicitacaoSnap.exists) {
+    throw new Error("Solicitação não encontrada.");
+  }
+
+  const solicitacao = solicitacaoSnap.data();
+
+  const quantidade = solicitacao.quantidade || 1;
+
+  const testadoresSnap = await db
+      .collection("testadores")
+      .where("status", "==", "aprovado")
+      .limit(quantidade)
+      .get();
+
+  if (testadoresSnap.empty) {
+    throw new Error("Nenhum testador aprovado disponível.");
+  }
+
+  const batch = db.batch();
+
+  for (const docSnap of testadoresSnap.docs) {
+    const missaoRef = db.collection("missoes").doc();
+
+    batch.set(missaoRef, {
+      solicitacaoId,
+      testadorId: docSnap.id,
+      status: "em_andamento",
+      diaAtual: 1,
+      totalDias: 14,
+      criadoEm: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    for (let i = 1; i <= 14; i++) {
+      const diaRef = missaoRef.collection("dias").doc(String(i));
+
+      batch.set(diaRef, {
+        numero: i,
+        status: "pendente",
+      });
+    }
+  }
+
+  batch.update(solicitacaoRef, {
+    missoesCriadas: true,
+  });
+
+  await batch.commit();
+
+  return {sucesso: true};
+});

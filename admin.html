@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <title>Painel Admin - ValidaPlay</title>
 
-
-
 <style>
 body{
     margin:0;
@@ -63,16 +61,6 @@ h1{
     margin-top:4px;
 }
 
-pre{
-    white-space: pre-wrap;
-    background:#0f172a;
-    padding:10px;
-    border-radius:6px;
-    color:#38bdf8;
-    margin-top:5px;
-    font-size:13px;
-}
-
 button{
     margin-top:10px;
     padding:8px 12px;
@@ -82,20 +70,6 @@ button{
     cursor:pointer;
     margin-right:5px;
 }
-.btn-historico{
-    background:#0ea5e9;
-    color:white;
-    padding:10px 15px;
-    border:none;
-    border-radius:8px;
-    cursor:pointer;
-    font-weight:bold;
-    margin-top:10px;
-}
-
-.btn-historico:hover{
-    background:#0284c7;
-}
 
 .btn-danger{ background:#ef4444; }
 .btn-success{ background:#22c55e; }
@@ -103,32 +77,29 @@ button{
 .btn-secondary{ background:#64748b; }
 
 .status-aprovado{ color:#22c55e; }
-.status-em_validacao { color:#38bdf8; }
-.status-bloqueado{ color:#ef4444; }
 .status-pendente{ color:#f59e0b; }
 .status-rejeitado{ color:#64748b; }
-
+.status-bloqueado{ color:#ef4444; }
 </style>
 </head>
-
 
 <body>
 
 <header>
   <h1>Painel Administrativo - ValidaPlay</h1>
-  
-<button onclick="logout()" style="
-  background:#ef4444;
-  padding:10px 15px;
-  border-radius:6px;
-  color:white;
-  border:none;
-  cursor:pointer;
-  margin-left:10px;
-  font-weight:bold;
-">
-  🚪 Sair
-</button>
+
+  <button onclick="logout()" style="
+    background:#ef4444;
+    padding:10px 15px;
+    border-radius:6px;
+    color:white;
+    border:none;
+    cursor:pointer;
+    font-weight:bold;
+  ">
+    🚪 Sair
+  </button>
+
   <div style="margin-top:15px;">
     <a href="missoes.html" style="
       background:#38bdf8;
@@ -140,16 +111,8 @@ button{
     ">
       Controle de Missões
     </a>
-
-    <button class="btn-historico"
-      onclick="window.location.href='admin-historico.html'"
-      style="margin-left:10px;">
-      📂 Histórico de Apps
-    </button>
-
   </div>
 </header>
-
 
 <div class="main">
 
@@ -164,7 +127,6 @@ button{
 </div>
 
 </div>
-
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -175,18 +137,17 @@ import {
   getDoc,
   query, 
   orderBy,
-  where,  
-  deleteDoc,
+  where,
   doc,
   updateDoc,
   addDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+import { getFunctions, httpsCallable } 
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
 
-
-
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-
+import { getAuth, onAuthStateChanged } 
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBp43RboeJ5eQildnFcTc7JtkHa0xvQdnM",
@@ -200,8 +161,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const functions = getFunctions(app);
 
-/* 🔐 PROTEÇÃO */
+/* 🔐 PROTEÇÃO ADMIN */
 onAuthStateChanged(auth, async (user) => {
 
   if (!user) {
@@ -209,57 +171,49 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
 
-  try {
+  const userSnap = await getDoc(doc(db, "usuarios", user.uid));
 
-    const userRef = doc(db, "usuarios", user.uid);
-    const userSnap = await getDoc(userRef);
-
-    if (!userSnap.exists()) {
-      alert("Usuário não encontrado na base.");
-      await auth.signOut();
-      window.location.href = "login.html";
-      return;
-    }
-
-    const dados = userSnap.data();
-
-    if (dados.tipo !== "admin") {
-      alert("Acesso restrito ao administrador.");
-      await auth.signOut();
-      window.location.href = "login.html";
-      return;
-    }
-
-    // ✅ Se chegou aqui, é admin verdadeiro
-    carregarSolicitacoes();
-    carregarTestadores();
-
-  } catch (error) {
-    console.error("Erro ao validar admin:", error);
-    alert("Erro interno de validação.");
+  if (!userSnap.exists() || userSnap.data().tipo !== "admin") {
+    alert("Acesso restrito ao administrador.");
     await auth.signOut();
     window.location.href = "login.html";
+    return;
   }
 
+  carregarSolicitacoes();
+  carregarTestadores();
 });
-
 
 /* 🔥 EXCLUIR */
 async function excluirRegistro(colecao, id){
-  const confirmar = confirm("Tem certeza que deseja excluir?");
-  if(!confirmar) return;
 
-  await deleteDoc(doc(db, colecao, id));
+  if(!confirm("Excluir definitivamente?")) return;
 
-  if(colecao === "solicitacoes"){
-    carregarSolicitacoes();
-  } else {
-    carregarTestadores();
+  try{
+
+    const excluirUsuario = httpsCallable(functions, "excluirUsuarioCompleto");
+
+    await excluirUsuario({
+      uid: id,
+      colecao: colecao
+    });
+
+    alert("Excluído com sucesso.");
+
+    if(colecao === "solicitacoes"){
+      carregarSolicitacoes();
+    } else {
+      carregarTestadores();
+    }
+
+  } catch(error){
+    alert("Erro ao excluir: " + error.message);
   }
 }
 
 /* 🔄 ATUALIZAR STATUS */
 async function atualizarStatus(colecao, id, novoStatus){
+
   await updateDoc(doc(db, colecao, id), {
     status: novoStatus
   });
@@ -275,30 +229,25 @@ window.excluirRegistro = excluirRegistro;
 window.atualizarStatus = atualizarStatus;
 
 window.logout = async function(){
-  const confirmar = confirm("Deseja sair do painel?");
-  if(!confirmar) return;
-
   await auth.signOut();
   window.location.href = "login.html";
-}
+};
 
-/* 🔵 EMPRESAS */
+/* 🔵 SOLICITAÇÕES */
 async function carregarSolicitacoes(){
-    const lista = document.getElementById("listaSolicitacoes");
-    lista.innerHTML = "";
 
-   const q = query(
-  collection(db,"solicitacoes"),
-  orderBy("criadoEm","desc")
-);
+  const lista = document.getElementById("listaSolicitacoes");
+  lista.innerHTML = "";
 
-const snap = await getDocs(q);
+  const snap = await getDocs(
+    query(collection(db,"solicitacoes"), orderBy("criadoEm","desc"))
+  );
 
-snap.forEach(docSnap=>{
+  snap.forEach(docSnap=>{
+
     const s = docSnap.data();
     const id = docSnap.id;
 
-    // 🔥 NÃO MOSTRAR ARQUIVADOS
     if (s.arquivado === true) return;
 
     const status = s.status || "pendente";
@@ -306,237 +255,155 @@ snap.forEach(docSnap=>{
     const div = document.createElement("div");
     div.className="card";
 
-   div.innerHTML = `
-  <div class="nome">${s.nomeApp}</div>
+    div.innerHTML = `
+      <div class="nome">${s.nomeApp}</div>
+      <div class="info">Email: ${s.email || "-"}</div>
+      <div class="info">Quantidade: ${s.quantidade || "-"}</div>
+      <div class="info">
+        Status:
+        <strong class="status-${status}">
+          ${status}
+        </strong>
+      </div>
 
-  <div class="info">Email: ${s.email || "-"}</div>
-  <div class="info">Quantidade: ${s.quantidade || "-"}</div>
-  <div class="info">
-    Status:
-    <strong class="status-${status}">
-      ${status}
-    </strong>
-  </div>
+      <div style="margin-top:10px;">
 
-  <div style="margin-top:10px;">
+        ${(status === "pendente" || status === "novo") ? `
+          <button class="btn-success"
+            onclick="atualizarStatus('solicitacoes','${id}','aprovado')">
+            Aprovar
+          </button>
 
-    ${!s.missoesCriadas ? `
-      <button class="btn-success" onclick="criarMissoes('${id}')">
-        Criar Missões
-      </button>
-    ` : ''}
+          <button class="btn-secondary"
+            onclick="atualizarStatus('solicitacoes','${id}','rejeitado')">
+            Rejeitar
+          </button>
+        ` : ''}
 
-    <button class="btn-secondary"
-      onclick="verDetalhes('${id}')">
-      Detalhes
-    </button>
+        ${status === "aprovado" && !s.missoesCriadas ? `
+          <button class="btn-success"
+            onclick="criarMissoes('${id}')">
+            Criar Missões
+          </button>
+        ` : ''}
 
-    <button class="btn-danger"
-      onclick="excluirRegistro('solicitacoes','${id}')">
-      Excluir
-    </button>
+        <button class="btn-secondary"
+          onclick="verDetalhes('${id}')">
+          Detalhes
+        </button>
 
-  </div>
-`;
+        <button class="btn-danger"
+          onclick="excluirRegistro('solicitacoes','${id}')">
+          Excluir
+        </button>
+
+      </div>
+    `;
 
     lista.appendChild(div);
-});
+  });
 }
-
 /* 🟢 TESTADORES */
 async function carregarTestadores(){
-    const lista = document.getElementById("listaTestadores");
-    lista.innerHTML = "";
 
-    const q = query(
-      collection(db,"testadores"),
-      orderBy("criadoEm","desc")
-    );
+  const lista = document.getElementById("listaTestadores");
+  lista.innerHTML = "";
 
-    const snap = await getDocs(q);
+  const snap = await getDocs(
+    query(collection(db,"testadores"), orderBy("criadoEm","desc"))
+  );
 
-    if(snap.empty){
-        lista.innerHTML = "Nenhum testador cadastrado.";
-        return;
-    }
+  if(snap.empty){
+    lista.innerHTML = "Nenhum testador cadastrado.";
+    return;
+  }
 
-    snap.forEach(docSnap=>{
-        const t = docSnap.data();
-        const id = docSnap.id;
-        const status = ["pendente","aprovado","bloqueado","rejeitado"]
-  .includes(t.status) ? t.status : "pendente";
+  snap.forEach(docSnap=>{
 
+    const t = docSnap.data();
+    const id = docSnap.id;
+    const status = t.status || "pendente";
 
-        const div = document.createElement("div");
-        div.className="card";
+    const div = document.createElement("div");
+    div.className="card";
 
-        div.innerHTML=`
-<div class="nome">${t.nome || "Sem nome"}</div>
-<div class="info">Email: ${t.email || "-"}</div>
+    div.innerHTML = `
+      <div class="nome">${t.nome || "Sem nome"}</div>
+      <div class="info">Email: ${t.email || "-"}</div>
+      <div class="info">WhatsApp: ${t.whatsapp || "-"}</div>
+      <div class="info">Modelo: ${t.modelo || "-"}</div>
 
+      <div class="info">
+        Status:
+        <strong class="status-${status}">
+          ${status}
+        </strong>
+      </div>
 
-<div class="info">
-WhatsApp:
-<a target="_blank"
-href="https://wa.me/55${(t.whatsapp || '').replace(/\D/g,'')}?text=${encodeURIComponent(
-`Olá ${t.nome || ""}!
+      <div style="margin-top:10px;">
 
-Seu cadastro foi aprovado na ValidaPlay 🎉
+        ${status === "pendente" ? `
+          <button class="btn-success"
+            onclick="atualizarStatus('testadores','${id}','aprovado')">
+            Aprovar
+          </button>
 
-Em breve você receberá um novo teste.
-Fique atento ao seu email.
+          <button class="btn-secondary"
+            onclick="atualizarStatus('testadores','${id}','rejeitado')">
+            Rejeitar
+          </button>
+        ` : ''}
 
-Equipe ValidaPlay`
-)}">
-📱 ${t.whatsapp || "-"}
-</a>
-</div>
+        ${status === "aprovado" ? `
+          <button class="btn-warning"
+            onclick="atualizarStatus('testadores','${id}','bloqueado')">
+            Bloquear
+          </button>
+        ` : ''}
 
-<div class="info">Tipo de celular: ${t.tipoCelular || "-"}</div>
-<div class="info">Modelo: ${t.modelo || "-"}</div>
-<div class="info">Versão: ${t.versao || "-"}</div>
+        ${status === "bloqueado" ? `
+          <button class="btn-success"
+            onclick="atualizarStatus('testadores','${id}','aprovado')">
+            Reativar
+          </button>
+        ` : ''}
 
-<div class="info">Status:
-  <strong class="status-${status}">
-    ${status}
-  </strong>
-</div>
+        <button class="btn-danger"
+          onclick="excluirRegistro('testadores','${id}')">
+          Excluir
+        </button>
 
-<div style="margin-top:10px;">
+      </div>
+    `;
 
-  ${status === "pendente" ? `
-    <button class="btn-success" onclick="atualizarStatus('testadores','${id}','aprovado')">Aprovar</button>
-    <button class="btn-secondary" onclick="atualizarStatus('testadores','${id}','rejeitado')">Rejeitar</button>
-  ` : ''}
-
-  ${status === "aprovado" ? `
-    <button class="btn-warning" onclick="atualizarStatus('testadores','${id}','bloqueado')">Bloquear</button>
-  ` : ''}
-
-  ${status === "bloqueado" ? `
-    <button class="btn-success" onclick="atualizarStatus('testadores','${id}','aprovado')">Reativar</button>
-  ` : ''}
-
-  <button class="btn-danger" onclick="excluirRegistro('testadores','${id}')">Excluir</button>
-
-</div>
-
-`;
-
-        lista.appendChild(div);
-    });
+    lista.appendChild(div);
+  });
 }
 
+/* 🚀 CRIAR MISSÕES */
 async function criarMissoes(appId){
 
-  
+  try {
 
- try {
+    const criar = httpsCallable(functions, "criarMissoesManual");
 
-  const appRef = doc(db,"solicitacoes",appId);
-  const appSnap = await getDoc(appRef);
+    await criar({ solicitacaoId: appId });
 
-  if(!appSnap.exists()){
-    alert("Aplicativo não encontrado.");
-    return;
+    alert("Missões criadas com sucesso!");
+    carregarSolicitacoes();
+
+  } catch(error){
+    alert("Erro ao criar missões: " + error.message);
   }
-
-  const quantidade = appSnap.data().quantidade || 12;
-
-  if(appSnap.data().missoesCriadas){
-    alert("Missões já foram criadas para este app.");
-    return;
-  }
-
-  const confirmar = confirm(`Criar ${quantidade} missões para este app?`);
-  if(!confirmar) return;
-
-  // 🔎 Buscar testadores aprovados
-  const testadoresSnap = await getDocs(
-    query(collection(db, "testadores"), orderBy("criadoEm","desc"))
-  );
-
-  const testadoresAprovados = testadoresSnap.docs
-    .filter(doc => doc.data().status === "aprovado");
-
-  // 🔎 Buscar missões ativas (somente em andamento)
-  const missoesSnap = await getDocs(
-    query(collection(db,"missoes"), where("status","==","em_andamento"))
-  );
-
-  const missoesAtivas = missoesSnap.docs;
-
-  // 🔢 Contar missões por testador
-  const contadorMissoes = {};
-
-  missoesAtivas.forEach(m => {
-    const tId = m.data().testadorId;
-    contadorMissoes[tId] = (contadorMissoes[tId] || 0) + 1;
-  });
-
-  // 🎯 Ordenar por quem tem menos missões
-  const ordenados = testadoresAprovados.sort((a,b) => {
-    const aCount = contadorMissoes[a.id] || 0;
-    const bCount = contadorMissoes[b.id] || 0;
-    return aCount - bCount;
-  });
-
-  // 🎯 Selecionar respeitando limite máximo de 3 missões simultâneas
-  const selecionados = [];
-
-  for(const t of ordenados){
-    const totalAtivas = contadorMissoes[t.id] || 0;
-
-    if(totalAtivas < 3){
-      selecionados.push(t);
-    }
-
-    if(selecionados.length === quantidade) break;
-  }
-
-  if(selecionados.length < quantidade){
-    alert("Não há testadores suficientes disponíveis.");
-    return;
-  }
-
-  // 🚀 Criar missões
-  for(const testadorDoc of selecionados){
-
-    await addDoc(collection(db,"missoes"),{
-      appId: appId,
-      testadorId: testadorDoc.id,
-      status: "em_andamento",
-      diaAtual: 1,
-      totalDias: 14,
-      dataInicio: new Date(),
-      dataFim: new Date(Date.now() + 14*24*60*60*1000),
-      criadoEm: new Date()
-    });
-
-  }
-
-  await updateDoc(doc(db,"solicitacoes",appId),{
-    missoesCriadas: true,
-    dataInicioValidacao: new Date()
-  });
-
-  alert("Missões criadas com sucesso!");
-  carregarSolicitacoes();
-
-} catch(error){
-  console.error(error);
-  alert("Erro ao criar missões.");
 }
 
-}
 window.criarMissoes = criarMissoes;
 
 window.verDetalhes = function(id){
   window.location.href = "admin-detalhes.html?id=" + id;
-}
-</script>
+};
 
+</script>
 
 </body>
 </html>
-

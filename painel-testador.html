@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <title>Painel do Testador - ValidaPlay</title>
 
-
-
 <style>
 body{
   margin:0;
@@ -33,9 +31,18 @@ h1{
   margin-top:5px;
 }
 
-
 .destaque{
   color:#22c55e;
+  font-weight:bold;
+}
+
+button{
+  margin-top:15px;
+  padding:8px 12px;
+  border:none;
+  border-radius:6px;
+  color:white;
+  cursor:pointer;
   font-weight:bold;
 }
 </style>
@@ -43,29 +50,12 @@ h1{
 
 <body>
 
-
-
 <div style="display:flex; justify-content:space-between; align-items:center;">
   <h1 style="margin:0;">Minhas Missões</h1>
-
-  <button id="btnLogout" style="
-      background:#ef4444;
-      padding:10px 15px;
-      border:none;
-      border-radius:6px;
-      color:white;
-      cursor:pointer;
-      font-weight:bold;
-  ">
-    Sair
-  </button>
+  <button id="btnLogout" style="background:#ef4444;">Sair</button>
 </div>
 
 <div style="margin-bottom:20px;"></div>
-
-
-
-
 
 <div id="listaMissoes">
 Carregando...
@@ -73,9 +63,7 @@ Carregando...
 
 <script type="module">
 
-import { initializeApp } 
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { 
   getFirestore,
   collection,
@@ -86,19 +74,25 @@ import {
   getDoc,
   updateDoc,
   serverTimestamp
-} 
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 import { 
   getAuth,
   onAuthStateChanged,
   signOut
-} 
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+import {
+  getStorage,
+  ref,
+  uploadBytes,
+  getDownloadURL,
+  deleteObject
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBp43RboeJ5eQildnFcTc7JtkHa0xvQdnM",
+  apiKey: "AIzaSy...",
   authDomain: "validaplay.firebaseapp.com",
   projectId: "validaplay",
   storageBucket: "validaplay.firebasestorage.app",
@@ -109,19 +103,13 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const storage = getStorage(app);
+
 
 async function carregarMinhasMissoes(user){
 
   const lista = document.getElementById("listaMissoes");
   lista.innerHTML = "";
-
-  const testadorRef = doc(db,"testadores", user.uid);
-  const testadorSnap = await getDoc(testadorRef);
-
-  if(!testadorSnap.exists()){
-    lista.innerHTML = "Você não está cadastrado como testador.";
-    return;
-  }
 
   const q = query(
     collection(db,"missoes"),
@@ -140,153 +128,125 @@ async function carregarMinhasMissoes(user){
     const m = docSnap.data();
     const missaoId = docSnap.id;
 
-    // 👇 TUDO que usa m precisa estar aqui dentro
+    const diaRef = doc(db,"missoes",missaoId,"dias",String(m.diaAtual));
+    const diaSnap = await getDoc(diaRef);
 
-    const appSnap = await getDoc(doc(db,"solicitacoes", m.appId));
-    const nomeApp = appSnap.exists() ? appSnap.data().nomeApp : "App não encontrado";
-    const grupo = appSnap.exists() ? appSnap.data().grupo : "";
-    const linkTeste = appSnap.exists() ? appSnap.data().linkTeste : "";
-    const instrucoes = appSnap.exists() ? appSnap.data().instrucoes : "";
+    if(!diaSnap.exists()) continue;
 
-    const hoje = new Date();
-    const fim = m.dataFim.toDate ? m.dataFim.toDate() : new Date(m.dataFim);
-    const diasRestantes = Math.ceil((fim - hoje) / (1000*60*60*24));
-
-    const ultima = m.ultimaConfirmacao 
-      ? (m.ultimaConfirmacao.toDate ? m.ultimaConfirmacao.toDate() : new Date(m.ultimaConfirmacao))
-      : null;
-
-    let jaConfirmouHoje = false;
-
-    if (ultima) {
-      jaConfirmouHoje =
-        ultima.getDate() === hoje.getDate() &&
-        ultima.getMonth() === hoje.getMonth() &&
-        ultima.getFullYear() === hoje.getFullYear();
-    }
+    const diaData = diaSnap.data();
 
     const div = document.createElement("div");
     div.className = "card";
 
-    div.innerHTML = `
-      <div class="info"><strong>App:</strong> ${nomeApp}</div>
-      <div class="info">Dia Atual: ${m.diaAtual} / ${m.totalDias}</div>
-      <div class="info destaque">Dias restantes: ${diasRestantes > 0 ? diasRestantes : 0}</div>
-      <div class="info">Status: ${m.status}</div>
+    let statusTexto = "";
+    let botaoHtml = "";
 
-      ${m.status === "em_andamento" ? `
-        ${jaConfirmouHoje ? `
-          <button disabled style="
-            margin-top:15px;
-            padding:8px 12px;
-            background:#64748b;
-            border:none;
-            border-radius:6px;
-            color:white;
-            font-weight:bold;
-          ">
-            Atividade já confirmada hoje
-          </button>
-        ` : `
-          <button onclick="confirmarDia('${missaoId}', ${m.diaAtual}, ${m.totalDias})"
-            style="
-              margin-top:15px;
-              padding:8px 12px;
-              background:#22c55e;
-              border:none;
-              border-radius:6px;
-              color:white;
-              cursor:pointer;
-              font-weight:bold;
-            ">
-            Confirmar atividade de hoje
-          </button>
-        `}
-      ` : ''}
+    if(diaData.status === "pendente"){
+      statusTexto = "Aguardando envio";
+      botaoHtml = `
+        <button style="background:#22c55e"
+          onclick="enviarPrint('${missaoId}', ${m.diaAtual})">
+          Enviar print do dia ${m.diaAtual}
+        </button>
+      `;
+    }
+    else if(diaData.status === "enviado"){
+      statusTexto = "Print enviado. Aguardando aprovação do administrador.";
+      botaoHtml = `
+        <button disabled style="background:#64748b">
+          Print já enviado
+        </button>
+      `;
+    }
+    else if(diaData.status === "reprovado"){
+      statusTexto = "Reprovado. Envie novamente.";
+      botaoHtml = `
+        <button style="background:#ef4444"
+          onclick="reenviarPrint('${missaoId}', ${m.diaAtual}, '${diaData.printUrl || ""}')">
+          Reenviar print
+        </button>
+      `;
+    }
+    else if(diaData.status === "aprovado"){
+      statusTexto = "Dia aprovado pelo administrador.";
+    }
+
+    div.innerHTML = `
+      <div class="info"><strong>App:</strong> ${m.nomeApp}</div>
+      <div class="info">Dia Atual: ${m.diaAtual} / ${m.totalDias}</div>
+      <div class="info destaque">Status do Dia: ${statusTexto}</div>
+      ${botaoHtml}
     `;
 
     lista.appendChild(div);
   }
 }
 
-window.confirmarDia = async function(missaoId, diaAtual, totalDias){
 
-  try {
+// ==========================
+// ENVIO DE PRINT
+// ==========================
+window.enviarPrint = async function(missaoId, diaAtual){
 
-    const missaoRef = doc(db,"missoes",missaoId);
-    const missaoSnap = await getDoc(missaoRef);
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
 
-    const dados = missaoSnap.data();
+  input.onchange = async (e)=>{
 
-    // 🔒 Verificar se já confirmou hoje
-    const ultima = dados.ultimaConfirmacao 
-      ? (dados.ultimaConfirmacao.toDate ? dados.ultimaConfirmacao.toDate() : new Date(dados.ultimaConfirmacao))
-      : null;
+    const file = e.target.files[0];
+    if(!file) return;
 
-    const hoje = new Date();
+    const storageRef = ref(storage, `prints/${missaoId}/dia_${diaAtual}.jpg`);
 
-    if(ultima &&
-      ultima.getDate() === hoje.getDate() &&
-      ultima.getMonth() === hoje.getMonth() &&
-      ultima.getFullYear() === hoje.getFullYear()
-    ){
-      alert("Você já confirmou hoje.");
-      return;
-    }
+    await uploadBytes(storageRef, file);
+    const url = await getDownloadURL(storageRef);
 
-    const novoDia = diaAtual + 1;
+    const diaRef = doc(db,"missoes",missaoId,"dias",String(diaAtual));
 
-    const novaConfirmacao = {
-      dia: novoDia,
-      data: serverTimestamp(),
-      validado: false
-    };
+    await updateDoc(diaRef,{
+      printUrl: url,
+      status: "enviado",
+      dataEnvio: serverTimestamp()
+    });
 
-    const confirmacoesAtuais = dados.confirmacoes || [];
-
-    const dadosAtualizacao = {
-      diaAtual: novoDia,
-      ultimaConfirmacao: serverTimestamp(),
-      confirmacoes: [...confirmacoesAtuais, novaConfirmacao]
-    };
-
-    if(novoDia >= totalDias){
-      dadosAtualizacao.status = "concluida";
-    }
-
-    await updateDoc(missaoRef, dadosAtualizacao);
-
-    alert("Dia confirmado com sucesso!");
+    alert("Print enviado com sucesso!");
     location.reload();
+  };
 
-  } catch(error){
-    console.error(error);
-    alert("Erro ao confirmar dia: " + error.message);
+  input.click();
+};
+
+
+// ==========================
+// REENVIO SE REPROVADO
+// ==========================
+window.reenviarPrint = async function(missaoId, diaAtual, antigaUrl){
+
+  if(antigaUrl){
+    try{
+      const oldRef = ref(storage, antigaUrl);
+      await deleteObject(oldRef);
+    }catch(e){}
   }
-}
+
+  await enviarPrint(missaoId, diaAtual);
+};
+
 
 onAuthStateChanged(auth, (user)=>{
-
   if(!user){
-  window.location.href = "login-testador.html";
-  return;
-}
-
-
+    window.location.href = "login-testador.html";
+    return;
+  }
   carregarMinhasMissoes(user);
-
 });
 
-
-
-const btnLogout = document.getElementById("btnLogout");
-
-btnLogout.addEventListener("click", async () => {
+document.getElementById("btnLogout").addEventListener("click", async ()=>{
   await signOut(auth);
   window.location.href = "login-testador.html";
 });
 
 </script>
-
 </body>
 </html>

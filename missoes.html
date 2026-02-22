@@ -94,13 +94,17 @@ Carregando...
 
 <script type="module">
 
+  
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { 
   getFirestore,
   collection,
   getDocs,
   doc,
-  getDoc
+  getDoc,
+  updateDoc,
+  addDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { 
   getAuth,
@@ -126,27 +130,44 @@ document.getElementById("btnLogout").addEventListener("click", async ()=>{
   window.location.href = "login.html";
 });
 
-onAuthStateChanged(auth, async (user)=>{
+onAuthStateChanged(auth, async (user) => {
 
-  if(!user){
+  if (!user) {
     window.location.href = "login.html";
     return;
   }
 
-  // 🔐 VERIFICA ADMIN
-  const userRef = doc(db,"usuarios",user.uid);
+  const userRef = doc(db, "usuarios", user.uid);
   const userSnap = await getDoc(userRef);
 
-  if(!userSnap.exists() || userSnap.data().tipo !== "admin"){
-    alert("Acesso restrito ao administrador.");
-    await signOut(auth);
+  if (!userSnap.exists()) {
+    alert("Usuário não encontrado.");
     window.location.href = "login.html";
+    return;
+  }
+
+  const dados = userSnap.data();
+
+  // ✅ ADMIN entra direto
+  if (dados.tipo === "admin") {
+    carregarMissoes();
+    return;
+  }
+
+  // 👇 SE FOR TESTADOR
+  const testadorRef = doc(db, "testadores", user.uid);
+  const testadorSnap = await getDoc(testadorRef);
+
+  if (!testadorSnap.exists() || testadorSnap.data().status !== "aprovado") {
+    document.body.innerHTML = `
+      <h2 style="color:red;">Perfil em análise</h2>
+      <p>Seu perfil ainda não foi aprovado.</p>
+    `;
     return;
   }
 
   carregarMissoes();
 });
-
 async function carregarMissoes(){
 
   const lista = document.getElementById("listaMissoes");
@@ -170,127 +191,116 @@ async function carregarMissoes(){
   let totalAndamento = 0;
   let totalAtrasadas = 0;
 
-  for (const docSnap of snap.docs){
+ for (const docSnap of snap.docs){
 
-    const m = docSnap.data();
-    const id = docSnap.id;
+  const m = docSnap.data();
+  const id = docSnap.id;
 
-    const appSnap = await getDoc(doc(db,"solicitacoes", m.appId));
-    const nomeApp = appSnap.exists() ? appSnap.data().nomeApp : "App não encontrado";
+  let estaAtrasada = false;
 
-    const testadorSnap = await getDoc(doc(db,"testadores", m.testadorId));
-    const nomeTestador = testadorSnap.exists() ? testadorSnap.data().nome : "Testador não encontrado";
+  if(m.status === "em_andamento" && m.dataInicio){
 
-    const hoje = new Date();
+    const inicio = m.dataInicio.toDate 
+      ? m.dataInicio.toDate() 
+      : new Date(m.dataInicio);
 
-    const ultima = m.ultimaConfirmacao 
-      ? (m.ultimaConfirmacao.toDate ? m.ultimaConfirmacao.toDate() : new Date(m.ultimaConfirmacao))
-      : null;
+    const hojeCalc = new Date();
 
-    let statusVisual = "";
-    let corStatus = "";
-    let prioridade = 2;
+    const diasPassados = Math.floor(
+      (hojeCalc - inicio) / (1000*60*60*24)
+    ) + 1;
 
-    if(m.status === "concluida"){
-      statusVisual = "Concluída";
-      corStatus = "#22c55e";
-      prioridade = 3;
-      totalConcluidas++;
+    if(diasPassados > m.diaAtual){
+      estaAtrasada = true;
     }
-    else if(!ultima){
-      statusVisual = "Nunca confirmou";
-      corStatus = "#ef4444";
-      prioridade = 1;
-      totalAndamento++;
-      totalAtrasadas++;
-    }
-    else{
-      const diffDias = Math.floor((hoje - ultima) / (1000*60*60*24));
-
-      if(diffDias === 0){
-        statusVisual = "Confirmou hoje";
-        corStatus = "#22c55e";
-        totalAndamento++;
-      }
-      else if(diffDias === 1){
-        statusVisual = "Confirmou ontem";
-        corStatus = "#f59e0b";
-        totalAndamento++;
-      }
-      else{
-        statusVisual = "ATRASADO";
-        corStatus = "#ef4444";
-        prioridade = 1;
-        totalAndamento++;
-        totalAtrasadas++;
-      }
-    }
-
-    totalMissoes++;
-    appsUnicos.add(nomeApp);
-
-    missoesProcessadas.push({
-      id,
-      nomeApp,
-      nomeTestador,
-      statusVisual,
-      corStatus,
-      prioridade,
-      m
-    });
   }
 
-  // 🔥 Ordenar por prioridade (atrasadas primeiro)
-  missoesProcessadas.sort((a,b)=> a.prioridade - b.prioridade);
+  // 🔥 CORREÇÃO AQUI
+  const solicitacaoId = m.appId || m.solicitacaoId;
 
-  // Popular filtro
-  const selectApp = document.getElementById("filtroApp");
-  selectApp.innerHTML = '<option value="todos">Todos os Apps</option>';
-  appsUnicos.forEach(app=>{
-    selectApp.innerHTML += `<option value="${app}">${app}</option>`;
-  });
+  const appSnap = solicitacaoId
+    ? await getDoc(doc(db,"solicitacoes", solicitacaoId))
+    : null;
 
-  for(const item of missoesProcessadas){
+  const nomeApp = appSnap && appSnap.exists()
+    ? appSnap.data().nomeApp
+    : "App não encontrado";
 
-    if(filtroApp !== "todos" && item.nomeApp !== filtroApp) continue;
+  const testadorSnap = await getDoc(doc(db,"testadores", m.testadorId));
+  const nomeTestador = testadorSnap.exists()
+    ? testadorSnap.data().nome
+    : "Testador não encontrado";
 
-    if(filtroStatus !== "todos"){
-      if(filtroStatus === "concluida" && item.statusVisual !== "Concluída") continue;
-      if(filtroStatus === "atrasado" && item.statusVisual !== "ATRASADO") continue;
-      if(filtroStatus === "hoje" && item.statusVisual !== "Confirmou hoje") continue;
-      if(filtroStatus === "nunca" && item.statusVisual !== "Nunca confirmou") continue;
+  const diaRef = doc(db,"missoes",id,"dias",String(m.diaAtual));
+  const diaSnap = await getDoc(diaRef);
+  const diaData = diaSnap.exists() ? diaSnap.data() : null;
+
+  let statusTexto = "";
+  let botoes = "";
+
+  if(diaData){
+
+    if(diaData.status === "pendente"){
+      statusTexto = "Aguardando envio do testador";
     }
 
-    const progresso = Math.floor((item.m.diaAtual / item.m.totalDias) * 100);
+    if(diaData.status === "enviado"){
+      statusTexto = "Print enviado - aguardando validação";
 
-    const div = document.createElement("div");
-    div.className = "card";
+      botoes = `
+        <button style="background:#22c55e"
+          onclick="aprovarDia('${id}', ${m.diaAtual})">
+          Aprovar Dia
+        </button>
 
-    if(item.statusVisual === "ATRASADO"){
-      div.classList.add("atrasado");
+        <button style="background:#ef4444"
+          onclick="reprovarDia('${id}', ${m.diaAtual})">
+          Reprovar Dia
+        </button>
+
+        <button style="background:#f59e0b;margin-left:6px;"
+          onclick="substituirTestador('${id}')">
+          Substituir Testador
+        </button>
+      `;
     }
 
-    div.innerHTML = `
-      <div class="info"><strong>App:</strong> ${item.nomeApp}</div>
-      <div class="info"><strong>Testador:</strong> ${item.nomeTestador}</div>
-      <div class="info">Dia Atual: ${item.m.diaAtual} / ${item.m.totalDias}</div>
+    if(diaData.status === "aprovado"){
+      statusTexto = "Dia aprovado";
+    }
 
-      <div style="margin-top:10px;">
-        <div style="background:#1e293b;border-radius:6px;height:10px;overflow:hidden;">
-          <div style="width:${progresso}%;background:#38bdf8;height:10px;"></div>
-        </div>
-        <div style="font-size:12px;margin-top:4px;">
-          ${progresso}% concluído
-        </div>
-      </div>
-
-      <div style="margin-top:6px;color:${item.corStatus};font-weight:bold;">
-        ${item.statusVisual}
-      </div>
-    `;
-
-    lista.appendChild(div);
+    if(diaData.status === "reprovado"){
+      statusTexto = "Reprovado - aguardando novo envio";
+    }
   }
+
+  const div = document.createElement("div");
+  div.className = "card";
+
+  if(estaAtrasada){
+    div.classList.add("atrasado");
+  }
+
+  div.innerHTML = `
+    <div class="info"><strong>App:</strong> ${nomeApp}</div>
+    <div class="info"><strong>Testador:</strong> ${nomeTestador}</div>
+    <div class="info">Dia Atual: ${m.diaAtual} / ${m.totalDias}</div>
+
+    ${estaAtrasada ? `
+      <div style="color:#ef4444;font-weight:bold;margin-top:8px;">
+        ⚠ Missão em atraso
+      </div>
+    ` : ''}
+
+    <div style="margin-top:6px;font-weight:bold;">
+      ${statusTexto}
+    </div>
+
+    ${botoes}
+  `;
+
+  lista.appendChild(div);
+}
 
   document.getElementById("dashboard").innerHTML = `
     <div class="card"><strong>Total:</strong> ${totalMissoes}</div>
@@ -303,6 +313,113 @@ async function carregarMissoes(){
 document.getElementById("filtroApp").addEventListener("change", carregarMissoes);
 document.getElementById("filtroStatus").addEventListener("change", carregarMissoes);
 
+
+async function aprovarDia(missaoId, diaNumero){
+
+  const diaRef = doc(db,"missoes",missaoId,"dias",String(diaNumero));
+  const missaoRef = doc(db,"missoes",missaoId);
+
+  await updateDoc(diaRef,{
+    status:"aprovado",
+    dataValidacao: new Date()
+  });
+
+  await updateDoc(missaoRef,{
+    diaAtual: diaNumero + 1
+  });
+
+  alert("Dia aprovado com sucesso!");
+  carregarMissoes();
+}
+window.aprovarDia = aprovarDia;
+
+
+async function reprovarDia(missaoId, diaNumero){
+
+  const diaRef = doc(db,"missoes",missaoId,"dias",String(diaNumero));
+
+  await updateDoc(diaRef,{
+    status:"reprovado",
+    dataValidacao: new Date()
+  });
+
+  alert("Dia reprovado.");
+  carregarMissoes();
+}
+window.reprovarDia = reprovarDia;
+
+async function substituirTestador(missaoId){
+
+  const confirmar = confirm("Deseja substituir este testador?");
+  if(!confirmar) return;
+
+  try{
+
+    const missaoRef = doc(db,"missoes",missaoId);
+    const missaoSnap = await getDoc(missaoRef);
+
+    if(!missaoSnap.exists()){
+      alert("Missão não encontrada.");
+      return;
+    }
+
+    const missao = missaoSnap.data();
+
+    // 🔒 Marcar missão antiga como substituída
+    await updateDoc(missaoRef,{
+      status:"substituida",
+      substituidaEm: new Date()
+    });
+
+    // 🔎 Buscar testadores aprovados
+    const testadoresSnap = await getDocs(collection(db,"testadores"));
+
+    const aprovados = testadoresSnap.docs.filter(t =>
+      t.data().status === "aprovado" &&
+      t.id !== missao.testadorId
+    );
+
+    if(aprovados.length === 0){
+      alert("Nenhum testador disponível.");
+      return;
+    }
+
+    // 🎯 Escolher o primeiro disponível
+    const novoTestador = aprovados[0];
+
+    // 🚀 Criar nova missão
+    const novaMissaoRef = await addDoc(collection(db,"missoes"),{
+      appId: missao.appId,
+      testadorId: novoTestador.id,
+      status: "em_andamento",
+      diaAtual: 1,
+      totalDias: 14,
+      dataInicio: new Date(),
+      dataFim: new Date(Date.now() + 14*24*60*60*1000),
+      criadoEm: new Date(),
+      substituiuMissaoId: missaoId
+    });
+
+    // 🔥 Criar 14 dias
+    for(let i=1;i<=14;i++){
+      await addDoc(collection(db,"missoes",novaMissaoRef.id,"dias"),{
+        numero: i,
+        status:"pendente",
+        printUrl:"",
+        dataEnvio:null,
+        dataValidacao:null
+      });
+    }
+
+    alert("Testador substituído com sucesso!");
+    carregarMissoes();
+
+  }catch(error){
+    console.error(error);
+    alert("Erro ao substituir testador.");
+  }
+}
+window.substituirTestador = substituirTestador;
 </script>
 
 </body>
